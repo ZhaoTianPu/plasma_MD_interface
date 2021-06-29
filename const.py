@@ -3,10 +3,10 @@
 hbar = 1.054571817E-34
 # elementary charge (in C)
 e    = 1.602176634E-19
-# elementary charge (in C)
-
 # electron mass (in kg)
 me   = 9.1093837015E-31
+# electon volt to kelvin
+eV   = 1.160451812E4
 # Boltzmann const (in J K-1)
 kB   = 1.380649E-23 
 # proton mass (in kg)
