@@ -120,11 +120,22 @@ class simulation:
       lines = f.read().split("\n")
       lines = [jline for jline in lines if jline != '']
       lines = [jline for jline in lines if jline[0] != '#']
-      for iLine,line in enumerate(lines):
-        # output file directory
-        self.dir = lines[0].strip()
-        self.EqmLogName
-        self.ProdLogName
+      lineCount = 0
+      lineUpdate = lambda x: x+1
+      # output file directory
+      self.dir = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
+      self.EqmLogName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
+      self.ProdLogName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
+      # species info
+      self.NSpecies = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.InitMixture = [[],[]]
+      for iSpecies in range(NSpecies):
+        word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
+        InitMixture[0].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[2].strip())))
+        InitMixture[0].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[3].strip())))
+      # simulation box size info
+      word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
+      self.Lx, self.Ly, self.Lz = 
       self.T 
       self.omega_p
       self.aWidth
@@ -133,7 +144,6 @@ class simulation:
       self.Lx2, self.Ly2, self.Lz2 = self.Lx/2, self.Ly/2, self.Lz/2
       self.NGrid 
       self.SimGridList = []
-      self.NSpecies 
       self.InitSpecies = []
 
       self.SimSpecies = []
@@ -142,6 +152,7 @@ class simulation:
       self.tProd
       self.dumpInterval
       self.updateInterval
+
       
 
 #--------------------------------------------------------------------

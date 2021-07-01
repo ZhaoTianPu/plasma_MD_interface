@@ -13,29 +13,29 @@
 # File directory: relative to the directory where the code and this input is
 # string, put . for the current folder
   ./interface_test
+# EqmLogName
+  NAME
+# ProdLogName
+  NAME
 #-----------------------------------------------------------------------------#
-# Mode of the simulation: "pure" for pure fluid, "binary" for binary mixture 
-# string 
-  binary
-# PairStyle: "poly" for polynomial potential w/ cutoff, "Coul" for Coulombic
-# string
-  Coul
-# NDim: Dimensionality, 2 or 3
-# int
-  3
+# Species info
+# NSpecies
+  2
+# Species 1 info: 
+# mass    | charge    | number density of mixture 1 | of mixture 2
+# float   | float     | float                       | float
+  1.        1.          1E-5                          2E-5
+# Species 2 info:               
+# mass    | charge    | number density of mixture 1 | of mixture 2
+# float   | float     | float                       | float
+  2.        1.          1E-6                          3E-5
 #-----------------------------------------------------------------------------#
-# Species 1 info: species 1 must have the smallest mass
-# mass    | charge    | number
-# float   | float     | int
-  1.        1.          5000       
-# Species 2 info: neglect if mode of the simulation is "pure"                  
-# mass    | charge    | number
-# float   | float     | int
-  2.        1.          5000 
-#-----------------------------------------------------------------------------#
+# Box size
+# Lx, Ly, Lz
+# floats
+  1E9 1E2 1E2
 # Simulation time, VACF and PCACF settings:
-# tStep: timestep measured in tau                      for PairStyle "poly" 
-#                          in plasma time of species 1 for PairStyle "Coul"
+# tStep: timestep measured in plasma time
 # float
   0.01
 # tEqm: simulation time for equilibration stage
