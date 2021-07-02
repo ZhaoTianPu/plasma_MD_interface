@@ -15,7 +15,12 @@
 #
 #-------------------------------------------------------------------
 #
-# 2021.04.18 Created                                 TPZ
+# 2021.04.18 Created                                             TPZ
+# 2021.07.02 Modified                                            TPZ
+#            (transfer functions in the simulation class and other
+#            classes; simulation code to be reviewed and updated as
+#            the strategy of code development now focuses on using
+#            classes to include simulation information)
 # 
 #-------------------------------------------------------------------
 
@@ -36,29 +41,7 @@ from classes import species, grid
 
 
 
-def FDDist(x,a):
-  """
-  function for obtaining the Fermi-Dirac distribution, f = 1/(exp(x/a)+1)
-  """
-  return 1/(exp(x/a)+1)
 
-def gDist(x,a,Lx2):
-  """
-  distribution that is designed for making the F-D distribution periodic
-  """
-  return FDDist(x,a) - FDDist(x+Lx2,a) + 1 - FDDist(x-Lx2,a)
-
-def pos2grid(x,dx,Lx2):
-  """
-  function that returns grid index when a position is provided
-  """
-  return floor((x + Lx2)/dx)
-
-def grid2pos(ix,dx,Lx2):
-  """
-  function that returns position when a grid number is provided
-  """
-  return (ix+1/2)*dx-Lx2
 
 def interface(sim, neigh_one = 5000, neigh_page = 50000):
   """

@@ -39,18 +39,10 @@
 #
 #-------------------------------------------------------------------
 #
-# 2020.08.08 Created                                 TPZ
-# 2020.09.04 Modified                                TPZ
-#            (added new classes species and simulations
-#             and reading input.txt)
-# 2020.09.07 Modified                                TPZ
-#            (completed the class species and simulations
-#            and the function for reading input)
-# 2020.09.19 Modified                                TPZ
-#            (edited comments)
-# 2021.03.31 Modified                                TPZ
-#            (upgraded to calculate diffusion coeffs on-
-#            the-fly)
+# 2021.06.29 Created                                 TPZ
+# 2021.07.02 Modified                                TPZ            
+#            (Updated script up to the initialisation of the 
+#            simulation box)   
 # 
 #-------------------------------------------------------------------
 
@@ -70,8 +62,12 @@ class InitSpecies:
     self.numDen   = numDen
 
 class SimSpecies(InitSpecies):
-  def __init__(self, mass, charge, numDen):
-    InitSpecies.__init__(self, mass, charge, numDen)
+  def __init__(self, InputInitSpecies):
+    if not(isinstance(InputInitSpecies,InitSpecies)):
+      raise Exception("error: input is not an InitSpecies class")
+    self.mass = InputInitSpecies.mass
+    self.charge = InputInitSpecies.charge
+    self.numDen = InputInitSpecies.numDen
     self.num = None
     self.TypeID = None 
     self.force = None
@@ -89,7 +85,7 @@ class SimSpecies(InitSpecies):
 # A class designed for calculating properties in simulation grids
 class SimGrid:
   def __init__(self, speciesList):
-    self.SpeciesList = speciesList
+    self.speciesList = speciesList
     self.NSpecies    = len(self.speciesList) 
     self.eDen        = self.eDenCalc()
     self.Ly          = None
@@ -99,6 +95,9 @@ class SimGrid:
     self.dx          = None 
   def eDenCalc(self):
     self.eDen = sum([species.numDen*species.charge for species in self.speciesList])
+  def numDenUpdate(self, numDenArray):
+    for iSpecies in range(NSpecies)
+      self.speciesList[iSpecies].numDen = numDenArray[iSpecies]
   def SetL(self, Lyin, Lzin):
     self.Ly, self.Lz = Lyin, Lzin
   def SetT(self, Tin):
@@ -122,38 +121,92 @@ class simulation:
       lines = [jline for jline in lines if jline[0] != '#']
       lineCount = 0
       lineUpdate = lambda x: x+1
+      
       # output file directory
       self.dir = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
       self.EqmLogName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
       self.ProdLogName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
+      
       # species info
       self.NSpecies = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.InitMixture = [[],[]]
       for iSpecies in range(NSpecies):
         word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
         InitMixture[0].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[2].strip())))
-        InitMixture[0].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[3].strip())))
+        InitMixture[1].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[3].strip())))
+      
       # simulation box size info
       word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
-      self.Lx, self.Ly, self.Lz = 
-      self.T 
-      self.omega_p
-      self.aWidth
-      self.Lx, self.Ly, self.Lz = 
-      self.dx 
+      self.Lx, self.Ly, self.Lz = float(word[0].strip()), float(word[1].strip()), float(word[2].strip())
       self.Lx2, self.Ly2, self.Lz2 = self.Lx/2, self.Ly/2, self.Lz/2
-      self.NGrid 
-      self.SimGridList = []
-      self.InitSpecies = []
-
-      self.SimSpecies = []
-      self.cutoff_global
-      self.tEqm
-      self.tProd
-      self.dumpInterval
-      self.updateInterval
-
+      self.NGrid = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.dx = Lx/NGrid
+      self.dV = self.dx*self.Ly*self.Lz
+      self.SimGridList = list(range(self.NGrid))
+      self.aWidth = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.T = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       
+      # assemble simulation grids
+      
+      # get an array of Fermi-Dirac distribution values
+      FDDistArray = [self.FDDist(self.grid2pos(ix)) for ix in range(self.NGrid)]
+
+      # initialise arrays of grids
+      self.SimulationBox = []
+      for iGrid in range(self.NGrid):
+        AtomNum = int(\
+        (SpeciesInfo[iSpecies].numDen[0]*FDDistArray[iGrid]+SpeciesInfo[iSpecies].numDen[1]*(1-FDDistArray[iGrid]))*dV \
+         )
+        speciesList = [SimSpecies(self.InitMixture[0][iSpecies]) for iSpecies in range(self.NSpecies)]
+        for iSpecies in range(self.NSpecies):
+          speciesList[iSpecies].SetnumDen(InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid]))
+          speciesList[iSpecies].SetTypeID(iSpecies*NGrid + iGrid+1)
+          speciesList[iSpecies].SetN(int(self.dV*speciesList[iSpecies].numDen))
+        self.SimulationBox.add(SimGrid(speciesList))
+        self.SimulationBox[iGrid].numDenUpdate([InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid]) for iGrid in range(NGrid)])
+        self.SimulationBox[iGrid].SetL(self.Ly,self.Lz)
+        self.SimulationBox[iGrid].SetT(self.T)
+        self.SimulationBox[iGrid].Setdx(self.dx)
+        self.SimulationBox[iGrid].kappaCalc()
+
+      # to-dos
+      # self.omega_p
+      # self.cutoff_global
+      # self.tEqm
+      # self.tProd
+      # self.dumpInterval
+      # self.updateInterval
+
+  # helper functions
+  def FDDist(self,x):
+    """
+    function for obtaining the Fermi-Dirac distribution, f = 1/(exp(x/a)+1)
+    """
+    return 1/(exp(x/self.aWidth)+1)
+  
+  def gDist(self,x):
+    """
+    distribution that is designed for making the F-D distribution periodic
+    """
+    return self.FDDist(x,self.aWidth) - self.FDDist(x+self.Lx2,self.a) + 1 - self.FDDist(x-self.Lx2,self.a)
+  
+  def pos2grid(self,x):
+    """
+    function that returns grid index when a position is provided
+    """
+    if abs(x) > self.Lx2 :
+      raise Exception("error: x-coordinate outside of the simulation box")
+    return floor((x + self.Lx2)/self.dx)
+  
+  def grid2pos(self,ix):
+    """
+    function that returns position when a grid number is provided
+    """
+    if ix > NGrid-1 or ix < 0:
+      raise Exception("error: grid number outside of the box number range")
+    return (ix+1/2)*self.dx-self.Lx2   
+
+
 
 #--------------------------------------------------------------------
   #     # simulation times

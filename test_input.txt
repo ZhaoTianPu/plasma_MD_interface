@@ -34,6 +34,18 @@
 # Lx, Ly, Lz
 # floats
   1E9 1E2 1E2
+# NGrid
+# integer
+  5
+# aWidth, Fermi-Dirac distribution width
+# float  
+  1E-5
+#-----------------------------------------------------------------------------#
+# Temperature
+# T
+# float
+  10
+  
 # Simulation time, VACF and PCACF settings:
 # tStep: timestep measured in plasma time
 # float
