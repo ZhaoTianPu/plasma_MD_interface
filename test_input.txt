@@ -75,27 +75,4 @@
 # particle interact with itself
 # float
   5
-# for "poly": in sigma, potential cutoff in sigma
-# for "Coul": in Wigner-Seitz radius, cutoff between direct and inverse space
-# potential treatment
-# float
-  5.
-#-----------------------------------------------------------------------------#
-# PairStyle-specific parameters:
-# For "Coul", if PairStyle is "poly" then this block is ignored:
-# Gamma: Coupling parameter, depending on the GammaMode
-# GammaMode: Gamma0 for eq. (3) in [1], Gamma for eq. (2) in [1]
-# NGrids: Number of grids on each dimension for PPPM scheme
-# GammaMode   | Gamma       | NGrids
-# string      | float       | int
-  Gamma        10            50 
-# For "poly", if PairStyle is "Coul" then this block is ignored:
-# numden: reduced total number density
-# float
-  1.
-# polyCoeff: coefficients of polynomial terms in descending order, begin with 
-# the constant term (and following with the terms r^-1, r^-2, etc.) 
-# r^0  | r^-1  | r^-2  | r^-3  | r^-4  | r^-5  | r^-6 | etc.    
-# all float  
-  0.     0.      0.      0.      1.                         
 #-----------------------------------------------------------------------------#

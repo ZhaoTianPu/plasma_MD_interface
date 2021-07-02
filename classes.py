@@ -244,10 +244,6 @@ class simulation:
       raise Exception("error: proposed Global cutoff is larger than 1/2 of the shortest side length")
     return cutoffGlobalMax
 
-
-
-
-
 #--------------------------------------------------------------------
   #     # simulation times
   #     self.tStep     = float(lines[42])
