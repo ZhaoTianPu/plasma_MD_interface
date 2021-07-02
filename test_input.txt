@@ -17,6 +17,8 @@
   NAME
 # ProdLogName
   NAME
+# DumpStemName
+  NAME
 #-----------------------------------------------------------------------------#
 # Species info
 # NSpecies
@@ -45,39 +47,34 @@
 # T
 # float
   10
-  
-# Simulation time, VACF and PCACF settings:
-# tStep: timestep measured in plasma time
+#-----------------------------------------------------------------------------#
+# Simulation time (all measured in aggregate plasma time):
+# tStep: timestep
 # float
   0.01
-# tEqm: simulation time for equilibration stage
+# tEqm: equilibrium stage time 
 # float
   10.
-# NReps, tInt, tLength, tFreq, NEvery:
-# NReps: The number of repetitions of VACF computes in a single trajectory,
-# it is also the number of time origins
-# tInt: The time between each VACF origin
-# tLength: The length (in time) of a single VACF and PCACF
-# tFreq: The interval (in time) between averages of PCACF to be evaluated and
-# reported
-# NEvery: The number of timesteps between subsequent VACF and PCACF calculations,
-# can be interpreted as "sample VACF/PCACF every NEvery steps"
-# NReps        | tInt       | tLength      | tFreq          | NEvery 
-# int          | float      | float        | float          | int
-  5             5.          160.          100.             1
-#-----------------------------------------------------------------------------#
-# File names:
-# EqmLogStem, ProdLogStem, FileStem:
-# File names for
-# setup and equilibrium stage log: {EqmLogStem}_{iTraj}.txt
-# production stage log           : {ProdLogStem}_{iTraj}.txt
-# VACF and self-diffusion file   : {FileStem}_{iTraj}_Dii_Type{iType}_{iRep}.txt
-# PCACF file                     : {FileStem}_{iTraj}_D12.txt
-# EqmLogStem          | ProdLogStem            | FileStem
-# string              | string                 | string
-  Eqm_HD             Prod_HD               HD
+# tProd: production stage time 
+# float
+  5.
+# tDump: dump interval time
+# float
+  5.
+# tkappaUpdate: kappa update interval time 
+# float
+  5.
 #-----------------------------------------------------------------------------# 
-# cutoff: 
+# potential parameters: 
+# global_cutoff:
+# measured in 1/kappa, the current algorithm is as follows:
+# calculate global_cutoff/kappa for all grids, then obtain the max, which is 
+# candidate global cutoff, and compare with Ly/2 and Lz/2. If the global 
+# cutoff is larger than these values, then report error and terminate simulation
+# as the candidate global cutoff is too large and when PBC is implemented,
+# particle interact with itself
+# float
+  5
 # for "poly": in sigma, potential cutoff in sigma
 # for "Coul": in Wigner-Seitz radius, cutoff between direct and inverse space
 # potential treatment

@@ -42,12 +42,12 @@
 # 2021.06.29 Created                                 TPZ
 # 2021.07.02 Modified                                TPZ            
 #            (Updated script up to the initialisation of the 
-#            simulation box)   
+#            simulation)   
 # 
 #-------------------------------------------------------------------
 
-import numpy as np
 from const import hbar,e,me,kB,mp,e0,e2,EF23prefac
+from math import sqrt, pi
 
 # InitSpecies class:
 # A class specifically designed for storing initial configuration of species
@@ -84,15 +84,15 @@ class SimSpecies(InitSpecies):
 # SimGrid class:
 # A class designed for calculating properties in simulation grids
 class SimGrid:
-  def __init__(self, speciesList):
+  def __init__(self, speciesList,Ly,Lz,T,dx):
     self.speciesList = speciesList
     self.NSpecies    = len(self.speciesList) 
     self.eDen        = self.eDenCalc()
-    self.Ly          = None
-    self.Lz          = None
-    self.kappa       = None
-    self.T           = None
-    self.dx          = None 
+    self.Ly, self.Lz = Ly, Lz
+    self.T           = T 
+    self.dx          = dx  
+    self.kappa       = self.kappaCalc()
+    self.omega_p     = self.omega_pCalc()
   def eDenCalc(self):
     self.eDen = sum([species.numDen*species.charge for species in self.speciesList])
   def numDenUpdate(self, numDenArray):
@@ -112,6 +112,22 @@ class SimGrid:
     EF23 = EF23prefac*self.eDen**(2/3)
     # kappa_TF = 1/lambda_TF
     self.kappa = e*sqrt(self.eDen/(e0*sqrt(kB*kB*self.T*self.T + EF23*EF23)))
+  def omega_pCalc(self):
+    """
+    obtain aggregate plasma frequency for a simulation grid, in Shaffer et al. 2017 
+    omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0), <> denotes number averages
+    """
+    numDenSum = self.numDenSum()
+    ZAvg = numAvg([self.speciesList[iSpecies].charge for iSpecies in range(NSpecies)])
+    mAvg = numAvg([self.speciesList[iSpecies].mass for iSpecies in range(NSpecies)])
+    self.omega_p = sqrt(numDenSum*ZAvg*ZAvg*e2/(mAvg*mp*e0))
+  def numDenSum(self):
+    return sum([self.speciesList[iSpecies].numDen for iSpecies in range(self.NSpecies)])
+  def numAvg(self,AList):
+    """
+    determine the number average of A, given as a list with length NSpecies
+    """
+    return [AList[iSpecies]*self.speciesList[iSpecies].numDen/self.numDenSum() for iSpecies in range(NSpecies)]
 
 class simulation:
   def __init__(self, InputFile):
@@ -126,6 +142,7 @@ class simulation:
       self.dir = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
       self.EqmLogName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
       self.ProdLogName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
+      self.DumpStemName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
       
       # species info
       self.NSpecies = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
@@ -154,28 +171,36 @@ class simulation:
       # initialise arrays of grids
       self.SimulationBox = []
       for iGrid in range(self.NGrid):
-        AtomNum = int(\
-        (SpeciesInfo[iSpecies].numDen[0]*FDDistArray[iGrid]+SpeciesInfo[iSpecies].numDen[1]*(1-FDDistArray[iGrid]))*dV \
-         )
-        speciesList = [SimSpecies(self.InitMixture[0][iSpecies]) for iSpecies in range(self.NSpecies)]
+        # initialise the list, which is made of a list of SimSpecies object made from InitSpecies
+        speciesList = [SimSpecies(iSpecies) for iSpecies in self.InitMixture[0]]
         for iSpecies in range(self.NSpecies):
-          speciesList[iSpecies].SetnumDen(InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid]))
+          # assign Type ID
           speciesList[iSpecies].SetTypeID(iSpecies*NGrid + iGrid+1)
+          # calculate particle numbers
           speciesList[iSpecies].SetN(int(self.dV*speciesList[iSpecies].numDen))
-        self.SimulationBox.add(SimGrid(speciesList))
+        # assemble the simulation grid
+        self.SimulationBox.add(SimGrid(speciesList,self.Ly,self.Lz,self.T,self.dx))
+        # update the number density of species
         self.SimulationBox[iGrid].numDenUpdate([InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid]) for iGrid in range(NGrid)])
-        self.SimulationBox[iGrid].SetL(self.Ly,self.Lz)
-        self.SimulationBox[iGrid].SetT(self.T)
-        self.SimulationBox[iGrid].Setdx(self.dx)
+        # calculate kappa, meanwhile update electron density
         self.SimulationBox[iGrid].kappaCalc()
+        # calculate omega_p with updated number density
+        self.SimulationBox[iGrid].omega_pCalc()
+      
+      # time scale: calculate omega_p, the aggregate plasma frequency, follows the expression in Shaffer et al. 2017 
+      # omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0)
+      self.omega_p = max([self.SimulationBox[iGrid].omega_p])
+      self.tp = 1./self.omega_p 
+      self.tStep = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.tEqm = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount) 
+      self.tProd = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.tDump = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.tkappaUpdate = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
 
-      # to-dos
-      # self.omega_p
-      # self.cutoff_global
-      # self.tEqm
-      # self.tProd
-      # self.dumpInterval
-      # self.updateInterval
+      # potential paramteres:
+      # global cutoff
+      cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.cutoffGlobal = self.cutoffGlobalCalc(cutoffGlobalIn)
 
   # helper functions
   def FDDist(self,x):
@@ -205,6 +230,21 @@ class simulation:
     if ix > NGrid-1 or ix < 0:
       raise Exception("error: grid number outside of the box number range")
     return (ix+1/2)*self.dx-self.Lx2   
+
+  def cutoffGlobalCalc(self, cutoffGlobalIn):
+    """
+    calculate cutoffGlobalIn/kappa for all grids, then obtain the max, which is 
+    candidate global cutoff, and compare with Ly/2 and Lz/2. If the global 
+    cutoff is larger than these values, then report error and terminate simulation
+    as the candidate global cutoff is too large and when PBC is implemented,
+    particle interact with itself
+    """
+    cutoffGlobalMax = max([cutoffGlobalIn/iGrid.kappa for iGrid in self.SimulationBox])
+    if cutoffGlobalMax > min([self.Ly2, self.Lz2]):
+      raise Exception("error: proposed Global cutoff is larger than 1/2 of the shortest side length")
+    return cutoffGlobalMax
+
+
 
 
 
