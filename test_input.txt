@@ -35,13 +35,13 @@
 # Box size
 # Lx, Ly, Lz
 # floats
-  1E9 1E2 1E2
+  1E9 1E8 1E8
 # NGrid
 # integer
   5
 # aWidth, Fermi-Dirac distribution width
 # float  
-  1E-5
+  1E8
 #-----------------------------------------------------------------------------#
 # Temperature
 # T

@@ -7,18 +7,13 @@
 # 
 # Description: 
 # This module contains the simulation class that reads input file
-# that contains the essential simulation parameters for either one
-# component fluid or binary mixture, interacting via an inverse 
-# polynomial potential or long-range Coulombic potential. It also
-# calculates several quantities for analysis. All the quantities in
-# the simulations are in LJ dimensionless units, as specified in [2], 
-# and all the expressions for derived variables can also be found in [1].
+# that contains the essential simulation parameters for plasma 
+# interface.
 # 
 # Module prerequisites:
 # The versions below are the ones that I use when developing the 
 # code. Earlier/later version may or may not work. 
 # python: 3.8.5
-# numpy: 1.19
 #
 # Here are brief descriptions for the functions/classes in this
 # module.
@@ -32,11 +27,6 @@
 #
 #-------------------------------------------------------------------
 #
-# [1]: unit_conversions.pdf
-# [2]: https://lammps.sandia.gov/doc/units.html
-# [3]: Shaffer et al. PRE 95 013206 (2017)
-# [4]: https://lammps.sandia.gov/doc/fix_ave_correlate.html
-#
 #-------------------------------------------------------------------
 #
 # 2021.06.29 Created                                 TPZ
@@ -47,7 +37,7 @@
 #-------------------------------------------------------------------
 
 from const import hbar,e,me,kB,mp,e0,e2,EF23prefac
-from math import sqrt, pi
+from math import sqrt, pi, exp
 
 # InitSpecies class:
 # A class specifically designed for storing initial configuration of species
@@ -87,16 +77,21 @@ class SimGrid:
   def __init__(self, speciesList,Ly,Lz,T,dx):
     self.speciesList = speciesList
     self.NSpecies    = len(self.speciesList) 
-    self.eDen        = self.eDenCalc()
+    self.eDen        = None
+    self.eDenCalc()
     self.Ly, self.Lz = Ly, Lz
     self.T           = T 
     self.dx          = dx  
-    self.kappa       = self.kappaCalc()
-    self.omega_p     = self.omega_pCalc()
+    self.kappa       = None
+    self.kappaCalc()
+    self.numDenSum   = None
+    self.numDenSumCalc()
+    self.omega_p     = None
+    self.omega_pCalc()
   def eDenCalc(self):
     self.eDen = sum([species.numDen*species.charge for species in self.speciesList])
   def numDenUpdate(self, numDenArray):
-    for iSpecies in range(NSpecies)
+    for iSpecies in range(self.NSpecies):
       self.speciesList[iSpecies].numDen = numDenArray[iSpecies]
   def SetL(self, Lyin, Lzin):
     self.Ly, self.Lz = Lyin, Lzin
@@ -117,17 +112,17 @@ class SimGrid:
     obtain aggregate plasma frequency for a simulation grid, in Shaffer et al. 2017 
     omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0), <> denotes number averages
     """
-    numDenSum = self.numDenSum()
-    ZAvg = numAvg([self.speciesList[iSpecies].charge for iSpecies in range(NSpecies)])
-    mAvg = numAvg([self.speciesList[iSpecies].mass for iSpecies in range(NSpecies)])
-    self.omega_p = sqrt(numDenSum*ZAvg*ZAvg*e2/(mAvg*mp*e0))
-  def numDenSum(self):
-    return sum([self.speciesList[iSpecies].numDen for iSpecies in range(self.NSpecies)])
+    ZAvg = self.numAvg([self.speciesList[iSpecies].charge for iSpecies in range(self.NSpecies)])
+    mAvg = self.numAvg([self.speciesList[iSpecies].mass for iSpecies in range(self.NSpecies)])
+    self.omega_p = sqrt(self.numDenSum*ZAvg*ZAvg*e2/(mAvg*mp*e0))
+  def numDenSumCalc(self):
+    self.numDenSum = sum([self.speciesList[iSpecies].numDen for iSpecies in range(self.NSpecies)])
   def numAvg(self,AList):
     """
     determine the number average of A, given as a list with length NSpecies
     """
-    return [AList[iSpecies]*self.speciesList[iSpecies].numDen/self.numDenSum() for iSpecies in range(NSpecies)]
+    self.numDenSumCalc()
+    return sum([AList[iSpecies]*self.speciesList[iSpecies].numDen/self.numDenSum for iSpecies in range(self.NSpecies)])
 
 class simulation:
   def __init__(self, InputFile):
@@ -147,17 +142,17 @@ class simulation:
       # species info
       self.NSpecies = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.InitMixture = [[],[]]
-      for iSpecies in range(NSpecies):
+      for iSpecies in range(self.NSpecies):
         word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
-        InitMixture[0].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[2].strip())))
-        InitMixture[1].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[3].strip())))
+        self.InitMixture[0].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[2].strip())))
+        self.InitMixture[1].append(InitSpecies(float(word[0].strip()), float(word[1].strip()) , float(word[3].strip())))
       
       # simulation box size info
       word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
       self.Lx, self.Ly, self.Lz = float(word[0].strip()), float(word[1].strip()), float(word[2].strip())
       self.Lx2, self.Ly2, self.Lz2 = self.Lx/2, self.Ly/2, self.Lz/2
       self.NGrid = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
-      self.dx = Lx/NGrid
+      self.dx = self.Lx/self.NGrid
       self.dV = self.dx*self.Ly*self.Lz
       self.SimGridList = list(range(self.NGrid))
       self.aWidth = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
@@ -175,13 +170,13 @@ class simulation:
         speciesList = [SimSpecies(iSpecies) for iSpecies in self.InitMixture[0]]
         for iSpecies in range(self.NSpecies):
           # assign Type ID
-          speciesList[iSpecies].SetTypeID(iSpecies*NGrid + iGrid+1)
+          speciesList[iSpecies].SetTypeID(iSpecies*self.NGrid + iGrid+1)
           # calculate particle numbers
           speciesList[iSpecies].SetN(int(self.dV*speciesList[iSpecies].numDen))
         # assemble the simulation grid
-        self.SimulationBox.add(SimGrid(speciesList,self.Ly,self.Lz,self.T,self.dx))
+        self.SimulationBox.append(SimGrid(speciesList,self.Ly,self.Lz,self.T,self.dx))
         # update the number density of species
-        self.SimulationBox[iGrid].numDenUpdate([InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid]) for iGrid in range(NGrid)])
+        self.SimulationBox[iGrid].numDenUpdate([self.InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + self.InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid]) for iSpecies in range(self.NSpecies)])
         # calculate kappa, meanwhile update electron density
         self.SimulationBox[iGrid].kappaCalc()
         # calculate omega_p with updated number density
@@ -201,7 +196,7 @@ class simulation:
       # global cutoff
       cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.cutoffGlobal = self.cutoffGlobalCalc(cutoffGlobalIn)
-
+      
   # helper functions
   def FDDist(self,x):
     """
@@ -227,7 +222,7 @@ class simulation:
     """
     function that returns position when a grid number is provided
     """
-    if ix > NGrid-1 or ix < 0:
+    if ix > self.NGrid-1 or ix < 0:
       raise Exception("error: grid number outside of the box number range")
     return (ix+1/2)*self.dx-self.Lx2   
 

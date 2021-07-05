@@ -1,3 +1,5 @@
+from math import pi 
+
 # all from NIST CODATA
 # hbar (in J s)
 hbar = 1.054571817E-34
