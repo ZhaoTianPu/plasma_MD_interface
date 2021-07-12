@@ -36,7 +36,7 @@
 # 
 #-------------------------------------------------------------------
 
-from const import hbar,e,me,kB,mp,e0,e2,EF23prefac
+from const import hbar,e,me,kB,mp,e0,e2,EF23prefac, eV
 from math import sqrt, pi, exp
 
 # InitSpecies class:
@@ -156,7 +156,7 @@ class simulation:
       self.dV = self.dx*self.Ly*self.Lz
       self.SimGridList = list(range(self.NGrid))
       self.aWidth = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
-      self.T = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.T = float(lines[lineCount].strip())*eV; lineCount = lineUpdate(lineCount)
       
       # assemble simulation grids
       
@@ -182,11 +182,14 @@ class simulation:
         # calculate omega_p with updated number density
         self.SimulationBox[iGrid].omega_pCalc()
       
-      # time scale: calculate omega_p, the aggregate plasma frequency, follows the expression in Shaffer et al. 2017 
+      # time scale: calculate omega_p for all grids, the aggregate plasma frequency, follows the expression in Shaffer et al. 2017 
+      # then take the maximum value 
       # omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0)
-      self.omega_p = max([self.SimulationBox[iGrid].omega_p])
+      self.omega_p = max([iGrid.omega_p for iGrid in self.SimulationBox])
       self.tp = 1./self.omega_p 
       self.tStep = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      # check the relations between plasma time and time step
+      self.tStepCheck()
       self.tEqm = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount) 
       self.tProd = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.tDump = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
@@ -236,8 +239,21 @@ class simulation:
     """
     cutoffGlobalMax = max([cutoffGlobalIn/iGrid.kappa for iGrid in self.SimulationBox])
     if cutoffGlobalMax > min([self.Ly2, self.Lz2]):
-      raise Exception("error: proposed Global cutoff is larger than 1/2 of the shortest side length")
+      raise Exception("error: proposed Global cutoff is larger than 1/2 of the shortest side length, which are "+str(cutoffGlobalMax)+" m and "+str(min([self.Ly2, self.Lz2]+" m")))
     return cutoffGlobalMax
+
+  def tStepCheck(self):
+    """
+    check if time step is smaller than the aggregate plasma time
+    """
+    if self.tp < self.tStep:
+      raise Exception("error: proposed time step is larger than the smallest plasma time, which are "+str(self.tp)+" s and "+str(self.tStep)+" s")
+    elif 0.1*self.tp < self.tStep:
+      print("warning: time step is larger than the smallest plasma time, which are "+str(self.tp)+" s and "+str(self.tStep)+" s")
+    else:
+      pass
+
+
 
 #--------------------------------------------------------------------
   #     # simulation times

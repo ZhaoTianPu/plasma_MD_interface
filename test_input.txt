@@ -1,14 +1,14 @@
 #-----------------------------------------------------------------------------#
 #                                                                             #
-#                             input.txt                                       #
+#                        test_input.txt                                       #
 #     Tianpu Zhao (TPZ), pacosynthesis@gmail.com, tz1416@ic.ac.uk             # 
 #                                                                             #
 #-----------------------------------------------------------------------------#
 # Description: A input file that specifies all the simulation details, to be  #
-# read by ReadInput module. If the structure of this input file is changed,   #
+# read by simulation class. If the structure of this input file is changed    #
 # the corresponding file reading function need also to be adjusted.           #
-# All the simulation units are in LJ by default, although the input file and  #
-# the code can be used with any other units as well.                          #
+# Most of the simulation units are in SI by default, with some exceptions,    #
+# although the input file can also be used with any other units as well.      #
 #-----------------------------------------------------------------------------#
 # File directory: relative to the directory where the code and this input is
 # string, put . for the current folder
