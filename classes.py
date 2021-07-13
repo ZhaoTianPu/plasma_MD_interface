@@ -76,9 +76,9 @@ class SimSpecies(InitSpecies):
 # SimGrid class:
 # A class designed for calculating properties in simulation grids
 class SimGrid:
-  def __init__(self, speciesList,Ly,Lz,T,dx):
-    self.speciesList = speciesList
-    self.NSpecies    = len(self.speciesList) 
+  def __init__(self, SpeciesList,Ly,Lz,T,dx):
+    self.SpeciesList = SpeciesList
+    self.NSpecies    = len(self.SpeciesList) 
     self.eDen        = None
     self.eDenCalc()
     self.Ly, self.Lz = Ly, Lz
@@ -92,13 +92,13 @@ class SimGrid:
     self.omega_p     = None
     self.omega_pCalc()
   def eDenCalc(self):
-    self.eDen = sum([species.numDen*species.charge for species in self.speciesList])
+    self.eDen = sum([species.numDen*species.charge for species in self.SpeciesList])
   def numUpdate(self, numArray):
     for iSpecies in range(self.NSpecies):
-      self.speciesList[iSpecies].SetN(numArray[iSpecies])
+      self.SpeciesList[iSpecies].SetN(numArray[iSpecies])
   def numDenCalc(self):
     for iSpecies in range(self.NSpecies):
-      self.speciesList[iSpecies].numDenUpdate(self.speciesList[iSpecies].num/self.dV)
+      self.SpeciesList[iSpecies].numDenUpdate(self.SpeciesList[iSpecies].num/self.dV)
   def SetL(self, Lyin, Lzin):
     self.Ly, self.Lz = Lyin, Lzin
   def SetT(self, Tin):
@@ -117,16 +117,16 @@ class SimGrid:
     obtain aggregate plasma frequency for a simulation grid, in Shaffer et al. 2017 
     omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0), <> denotes number averages
     """
-    ZAvg = self.numAvg([self.speciesList[iSpecies].charge for iSpecies in range(self.NSpecies)])
-    mAvg = self.numAvg([self.speciesList[iSpecies].mass for iSpecies in range(self.NSpecies)])
+    ZAvg = self.numAvg([self.SpeciesList[iSpecies].charge for iSpecies in range(self.NSpecies)])
+    mAvg = self.numAvg([self.SpeciesList[iSpecies].mass for iSpecies in range(self.NSpecies)])
     self.omega_p = sqrt(self.numDenSum*ZAvg*ZAvg*e2/(mAvg*mp*e0))
   def numDenSumCalc(self):
-    self.numDenSum = sum([self.speciesList[iSpecies].numDen for iSpecies in range(self.NSpecies)])
+    self.numDenSum = sum([self.SpeciesList[iSpecies].numDen for iSpecies in range(self.NSpecies)])
   def numAvg(self,AList):
     """
     determine the number average of A, given as a list with length NSpecies
     """
-    return sum([AList[iSpecies]*self.speciesList[iSpecies].numDen/self.numDenSum for iSpecies in range(self.NSpecies)])
+    return sum([AList[iSpecies]*self.SpeciesList[iSpecies].numDen/self.numDenSum for iSpecies in range(self.NSpecies)])
 
 class simulation:
   def __init__(self, InputFile):
@@ -171,14 +171,14 @@ class simulation:
       self.SimulationBox = []
       for iGrid in range(self.NGrid):
         # initialise the list, which is made of a list of SimSpecies object made from InitSpecies
-        speciesList = [SimSpecies(iSpecies) for iSpecies in self.InitMixture[0]]
+        SpeciesList = [SimSpecies(iSpecies) for iSpecies in self.InitMixture[0]]
         for iSpecies in range(self.NSpecies):
           # assign Type ID
-          speciesList[iSpecies].SetTypeID(iSpecies*self.NGrid + iGrid+1)
+          SpeciesList[iSpecies].SetTypeID(iSpecies*self.NGrid + iGrid+1)
           # calculate particle numbers
-          speciesList[iSpecies].SetN(int(self.dV*speciesList[iSpecies].numDen))
+          SpeciesList[iSpecies].SetN(int(self.dV*SpeciesList[iSpecies].numDen))
         # assemble the simulation grid
-        self.SimulationBox.append(SimGrid(speciesList,self.Ly,self.Lz,self.T,self.dx))
+        self.SimulationBox.append(SimGrid(SpeciesList,self.Ly,self.Lz,self.T,self.dx))
         # update the number density of species
         self.SimulationBox[iGrid].numUpdate([int(self.SimulationBox[iGrid].dV*self.InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + self.SimulationBox[iGrid].dV*self.InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid])) for iSpecies in range(self.NSpecies)])
         self.SimulationBox[iGrid].numDenCalc()
@@ -197,8 +197,11 @@ class simulation:
       # check the relations between plasma time and time step
       self.tStepCheck()
       self.tEqm = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount) 
+      self.NEqm = int(self.tEqm/self.tStep)
       self.tProd = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
-      self.tDump = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.NProd = int(self.tProd/self.tStep)
+      self.tDump = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)  
+      self.NDump = int(self.tDump/self.tStep)
       self.forcefield = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
 
       # potential paramteres:

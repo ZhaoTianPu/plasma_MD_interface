@@ -86,44 +86,37 @@ def interface(sim, neigh_one = 5000, neigh_page = 50000):
       RandCreate.append([RNG() for iGrid in range(sim.NGrid)])
   # broadcast (distribute) the generated random numbers to every processor
   RandCreate = MPI.COMM_WORLD.bcast(RandCreate, root=0)
-  
-  # create an array of size (NSpecies,NGrid) to store particle numbers in each grid for each type
-  # AtomNum = [\
-  #   [\
-  #     int(\
-  #       (SpeciesInfo[iSpecies].numDen[0]*FDDistArray[iGrid]+SpeciesInfo[iSpecies].numDen[1]*(1-FDDistArray[iGrid]))*dV \
-  #        ) \
-  #     for iGrid in range(NGrid) \
-  #   ] for iSpecies in range(NSpecies) \
-  #           ]
-
-  # create an array of size (NSpecies,NGrid) to store particle type
-  # TypeNumber = [[ iSpecies*NGrid + iGrid+1 for iGrid in range(NGrid)] for iSpecies in range(NSpecies)]
 
   # create and set atoms, and their masses and charges
   for iSpecies in range(NSpecies):
     for iGrid in range(NGrid):
-      L.create_atoms(sim.SimulationBox[iGrid].speciesList[iSpecies].TypeID, "random", AtomNum[iSpecies][iGrid], RandCreate[iSpecies][iGrid], "Region"+"_"+str(iGrid))
-      L.mass(iSpecies+1, SpeciesInfo[iSpecies].mass) 
-      L.set("type", iSpecies+1, "charge", SpeciesInfo[iSpecies].charge)   
+      L.create_atoms(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "random", sim.SimulationBox[iGrid].SpeciesList[iSpecies].num, RandCreate[iSpecies][iGrid], "Region"+"_"+str(iGrid))
+      L.mass(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
+      L.set("type", sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "charge", sim.SimulationBox[iGrid].SpeciesList[iSpecies].charge)   
   
   # set the timestep
-  L.timestep(dt) 
+  L.timestep(sim.tStep) 
   
   # check neighbor parameters
   L.neigh_modify("delay", 0, "every", 1)
   
-  # interaction style - Debye variable Kappa
-  L.pair_style("coul/debye/vk",cutoff_global)
-  # pair coeff for same type particles
-  for iGrid in range(NGrid):
-    for iSpecies in range(NSpecies):
-      L.pair_coeff(TypeNumber[iSpecies][iGrid], TypeNumber[iSpecies][iGrid], TFScreen(simGrid[iGrid][iSpecies].eDen, T))
+  # interaction style
+  # for Debye with variable Kappa
+  if sim.forcefield == "Debye":
+    L.pair_style("coul/debye/vk",sim.cutoffGlobal)
+    # pair coeff for same type particles
+    for iGrid in range(NGrid):
+      for iSpecies in range(NSpecies):
+        L.pair_coeff(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].kappa, sim.T)
+  elif sim.forcefield == "eFF":
+    L.pair_style("eff/cut", sim.cutoffGlobal)
+    L.pair_coeff("* *")
+    L.comm_modify("vel yes")
 
   #-------------------------------------------------------------------
   # Grouping based on species
   for iSpecies in range(NSpecies):
-    L.group("Species"+str(iSpecies+1), "id", str(sum([sum(TypeNumber[jSpecies]) for jSpecies in range(iSpecies)]))+":"+str(sum(TypeNumber[iSpecies])))
+    L.group("Species"+str(iSpecies+1), "type", str(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID)+":"+str(sim.SimulationBox[-1].SpeciesList[iSpecies].TypeID))
   
   # generate a random number for setting velocity
   RandV = 0
@@ -136,8 +129,7 @@ def interface(sim, neigh_one = 5000, neigh_page = 50000):
   
   # Integrator set to be verlet
   L.run_style("verlet")
-  # Nose-Hoover thermostat, the temperature damping parameter 
-  # is suggested in [7]
+  # Nose-Hoover thermostat, the temperature damping parameter is suggested by the official document
   L.fix("Nose_Hoover all nvt temp", T, T, 100.0*dt) 
 
   #-------------------------------------------------------------------
@@ -151,18 +143,15 @@ def interface(sim, neigh_one = 5000, neigh_page = 50000):
   L.reset_timestep(0)
   L.thermo(1000)
   # Equilibriation time
-  L.run(NEqm)
+  L.run(self.NEqm)
 
   #-------------------------------------------------------------------
   # Production run
+  L.log(self.ProdLogName) 
   # unfix NVT
   L.unfix("Nose_Hoover")
   # fix NVE, energy is conserved, not using NVT because T requires 
   # additional heat bath
   L.fix("NVEfix all nve") 
   L.reset_timestep(0)
-
-  L.log(ProdLogName) 
-
-  
-
+  L.run(self.NProd)
