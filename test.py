@@ -1,3 +1,5 @@
 from classes import simulation
+from interface import interface
 
-Sim = simulation("input_benchmark.txt")
+sim = simulation("input_benchmark.txt")
+interface(sim)

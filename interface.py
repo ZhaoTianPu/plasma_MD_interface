@@ -38,7 +38,7 @@ from const import hbar,e,me,kB,mp,e0,e2,EF23prefac
 from math import pi, floor, exp
 from classes import InitSpecies, SimSpecies, SimGrid, simulation
 
-def interface(sim, neigh_one = 5000, neigh_page = 50000):
+def interface(sim):
   """
   
   """
@@ -98,7 +98,7 @@ def interface(sim, neigh_one = 5000, neigh_page = 50000):
   L.timestep(sim.tStep) 
   
   # check neighbor parameters
-  L.neigh_modify("delay", 0, "every", 1)
+  L.neigh_modify("delay", 0, "every", 1, "one", 5000, "page", 50000)
   
   # interaction style
   # for Debye with variable Kappa
