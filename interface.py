@@ -36,61 +36,28 @@ from random import randint
 from mpi4py import MPI
 from const import hbar,e,me,kB,mp,e0,e2,EF23prefac
 from math import pi, floor, exp
-from classes import species, grid
-
-
-
-
-
+from classes import InitSpecies, SimSpecies, SimGrid, simulation
 
 def interface(sim, neigh_one = 5000, neigh_page = 50000):
   """
   
   """
-  # variables
-  Lx
-  Ly
-  Lz
-  Lx2 = Lx/2
-  Ly2 = Ly/2
-  Lz2 = Lz/2
-  omega_p
-  tp
-  NSpecies
-  NRange
-  aWidth
-  NGrid
-  InitSpeciesInfo[1][iSpecies].numDen
-  InitSpeciesInfo[2][iSpecies].numDen
-  SpeciesInfo[iSpecies].mass
-  SpeciesInfo[iSpecies].charge
-  Grid
-  T
-  cutoff_global
-  ne[iGrid]
-  EqmLogName
-  ProdLogName
-
-
-  
-
-
   # supress multithreading
   os.environ["OMP_NUM_THREADS"] = "1"
   os.environ["MKL_NUM_THREADS"] = "1"
   os.environ["NUMEXPR_NUM_THREADS"] = "1"
   os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
-  # initiate PyLammps
-  L = PyLammps()
-
-  L.log(EqmLogName) 
-
-  L.variable("NEvery", "equal", NEvery)
-  
+  if not isinstance(sim,simulation):
+    raise Exception("error: the input is not a simulation class")
   # random number generator for random number seeds by using lambda variable, 
   # so that two calls won't produce the same sequence of random numbers 
   RNG = lambda: randint(1, 100000)
+  
+  # initiate PyLammps
+  L = PyLammps()
+
+  L.log(sim.EqmLogName) 
 
   # SI units
   L.units("si")
@@ -98,57 +65,45 @@ def interface(sim, neigh_one = 5000, neigh_page = 50000):
   L.dimension(3)
   L.boundary("f p p")
 
-  # calculate timestep which is measured in LJ units
-  tp = 1. / omega_p
-  # time step
-  dt = tStep * tp
-  # step size of x 
-  dx = Lx/(NGrid - 1)
-  # volume of grid
-  dV = dx*Ly*Lz
-
   #-------------------------------------------------------------------
   # create box
-  L.region("box block", -Lx2, Lx2, -Ly2, Ly2, -Lz2, Lz2)
+  L.region("box block", -sim.Lx2, sim.Lx2, -sim.Ly2, sim.Ly2, -sim.Lz2, sim.Lz2)
 
   # create simulation box
-  L.create_box(NSpecies, "box") 
+  L.create_box(sim.NSpecies*sim.NGrid, "box") 
   
   # create regions, make solid walls
-  for iGrid in range(NGrid):
-    L.region("Region"+"_"+str(iGrid), "block", -Lx2+iGrid*dx, -Lx2+(iGrid+1)*dx, -Ly2, Ly2, -Lz2, Lz2)
-    L.fix("Wall"+"_"+str(iGrid), "all", "wall/reflect", "xlo", -Lx2+iGrid*dx, "xhi", -Lx2+(iGrid+1)*dx, "units", "box")
-
-  # make an array that stores the value of distribution function
-  FDDistArray = [FDDist(grid2pos(ix,dx,Lx2),aWidth) for ix in range(NGrid)]
+  for iGrid in range(sim.NGrid):
+    L.region("Region"+"_"+str(iGrid), "block", -sim.Lx2+iGrid*sim.dx, -sim.Lx2+(iGrid+1)*sim.dx, -sim.Ly2, sim.Ly2, -sim.Lz2, sim.Lz2)
+    L.fix("Wall"+"_"+str(iGrid), "all", "wall/reflect", "xlo", -sim.Lx2+iGrid*sim.dx, "xhi", -sim.Lx2+(iGrid+1)*sim.dx, "units", "box")
 
   # create (NSpecies,NGrid) number of random numbers
   RandCreate = []
   # only ask the processor w/ rank 0 to generate random numbers
   if MPI.COMM_WORLD.rank == 0:
-    for iSpecies in range(NSpecies):
+    for iSpecies in range(sim.NSpecies):
       # generates NSpecies number of random seed numbers for each grid
-      RandCreate.append([RNG() for iGrid in range(NGrid)])
+      RandCreate.append([RNG() for iGrid in range(sim.NGrid)])
   # broadcast (distribute) the generated random numbers to every processor
   RandCreate = MPI.COMM_WORLD.bcast(RandCreate, root=0)
   
   # create an array of size (NSpecies,NGrid) to store particle numbers in each grid for each type
-  AtomNum = [\
-    [\
-      int(\
-        (SpeciesInfo[iSpecies].numDen[0]*FDDistArray[iGrid]+SpeciesInfo[iSpecies].numDen[1]*(1-FDDistArray[iGrid]))*dV \
-         ) \
-      for iGrid in range(NGrid) \
-    ] for iSpecies in range(NSpecies) \
-            ]
+  # AtomNum = [\
+  #   [\
+  #     int(\
+  #       (SpeciesInfo[iSpecies].numDen[0]*FDDistArray[iGrid]+SpeciesInfo[iSpecies].numDen[1]*(1-FDDistArray[iGrid]))*dV \
+  #        ) \
+  #     for iGrid in range(NGrid) \
+  #   ] for iSpecies in range(NSpecies) \
+  #           ]
 
   # create an array of size (NSpecies,NGrid) to store particle type
-  TypeNumber = [[ iSpecies*NGrid + iGrid+1 for iGrid in range(NGrid)] for iSpecies in range(NSpecies)]
+  # TypeNumber = [[ iSpecies*NGrid + iGrid+1 for iGrid in range(NGrid)] for iSpecies in range(NSpecies)]
 
   # create and set atoms, and their masses and charges
   for iSpecies in range(NSpecies):
     for iGrid in range(NGrid):
-      L.create_atoms(TypeNumber[iSpecies][iGrid], "random", AtomNum[iSpecies][iGrid], RandCreate[iSpecies][iGrid], "Region"+"_"+str(iGrid))
+      L.create_atoms(sim.SimulationBox[iGrid].speciesList[iSpecies].TypeID, "random", AtomNum[iSpecies][iGrid], RandCreate[iSpecies][iGrid], "Region"+"_"+str(iGrid))
       L.mass(iSpecies+1, SpeciesInfo[iSpecies].mass) 
       L.set("type", iSpecies+1, "charge", SpeciesInfo[iSpecies].charge)   
   
