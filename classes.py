@@ -193,13 +193,20 @@ class simulation:
       self.tEqm = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount) 
       self.tProd = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.tDump = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
-      self.tkappaUpdate = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.forcefield = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
 
       # potential paramteres:
-      # global cutoff
-      cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
-      self.cutoffGlobal = self.cutoffGlobalCalc(cutoffGlobalIn)
-      
+      if self.forcefield == 'Debye':
+        self.tkappaUpdate = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+        # global cutoff
+        cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+        self.cutoffGlobal = self.cutoffGlobalCalc(cutoffGlobalIn)
+      elif self.forcefield == 'eFF':
+        lineCount = lineUpdate(lineCount)
+        lineCount = lineUpdate(lineCount)
+        cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+        self.cutoffGlobal = cutoffGlobalIn
+
   # helper functions
   def FDDist(self,x):
     """
