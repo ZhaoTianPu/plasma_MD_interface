@@ -1,5 +1,6 @@
 from classes import simulation
 from interface import interface
+import sys
 
-sim = simulation("input_benchmark.txt")
+sim = simulation(sys.argv[0])
 interface(sim)
