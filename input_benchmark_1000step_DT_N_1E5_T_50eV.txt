@@ -14,7 +14,7 @@
 #-----------------------------------------------------------------------------#
 # File directory: relative to the directory where the code and this input is
 # string, put . for the current folder
-  ./benchmark_1000step_DT_N_2E7_T_50eV
+  ./benchmark_1000step_DT_N_1E5_T_50eV
 # EqmLogName
   benchmark_EqmLog
 # ProdLogName
@@ -40,7 +40,7 @@
 # Lx, Ly, Lz
 # m
 # floats
-  1145.2E-9 17.178E-9 17.178E-9 
+  1.95826E-07 2.93740E-09 2.93740E-09
 # NGrid
 # integer
   2
