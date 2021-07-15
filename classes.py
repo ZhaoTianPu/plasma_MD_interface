@@ -107,19 +107,19 @@ class SimGrid:
     self.dx = dxin
   def kappaCalc(self):
     """
-    function for obtaining the TF screening length
+    function for obtaining the TF screening length in 1/A
     """
-    EF23 = EF23prefac*self.eDen**(2/3)
+    EF23 = EF23prefac*self.eDen**(2/3)*1E20
     # kappa_TF = 1/lambda_TF
-    self.kappa = e*sqrt(self.eDen/(e0*sqrt(kB*kB*self.T*self.T + EF23*EF23)))
+    self.kappa = 1E-10*e*sqrt(1E30*self.eDen/(e0*sqrt(kB*kB*self.T*self.T + EF23*EF23)))
   def omega_pCalc(self):
     """
     obtain aggregate plasma frequency for a simulation grid, in Shaffer et al. 2017 
-    omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0), <> denotes number averages
+    omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0), <> denotes number averages in 1/fs
     """
     ZAvg = self.numAvg([self.SpeciesList[iSpecies].charge for iSpecies in range(self.NSpecies)])
     mAvg = self.numAvg([self.SpeciesList[iSpecies].mass for iSpecies in range(self.NSpecies)])
-    self.omega_p = sqrt(self.numDenSum*ZAvg*ZAvg*e2/(mAvg*mp*e0))
+    self.omega_p = 1E-15*sqrt(self.numDenSum*ZAvg*ZAvg*e2/(mAvg*mp*e0))
   def numDenSumCalc(self):
     self.numDenSum = sum([self.SpeciesList[iSpecies].numDen for iSpecies in range(self.NSpecies)])
   def numAvg(self,AList):
