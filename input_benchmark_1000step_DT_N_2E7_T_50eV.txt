@@ -16,11 +16,11 @@
 # string, put . for the current folder
   ./benchmark_1000step_DT_N_2E7_T_50eV
 # EqmLogName
-  benchmark_EqmLog
+  benchmark_EqmLog.txt
 # ProdLogName
-  benchmark_ProdLog
+  benchmark_ProdLog.txt
 # DumpStemName
-  benchmark_Dump
+  benchmark_Dump.txt
 #-----------------------------------------------------------------------------#
 # Species info
 # NSpecies

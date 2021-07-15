@@ -48,6 +48,14 @@ def interface(sim):
   os.environ["NUMEXPR_NUM_THREADS"] = "1"
   os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
+  # create directory with only processor at rank 0
+  if MPI.COMM_WORLD.rank == 0:
+    if not os.path.isdir(sim.dir):
+      os.mkdir(sim.dir)
+
+  sleep(3)
+  os.chdir(sim.dir)
+
   if not isinstance(sim,simulation):
     raise Exception("error: the input is not a simulation class")
   # random number generator for random number seeds by using lambda variable, 
@@ -103,7 +111,7 @@ def interface(sim):
   L.timestep(sim.tStep) 
   
   # check neighbor parameters
-  L.neigh_modify("delay", 0, "every", 1, "one", 5000, "page", 50000)
+  L.neigh_modify("delay", 0, "every", 1, "one", 10000, "page", 100000)
   
   # interaction style
   # for Debye with variable Kappa
