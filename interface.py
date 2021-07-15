@@ -33,7 +33,7 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 from lammps import PyLammps
 import numpy as np
 from random import randint
-# from mpi4py import MPI
+from mpi4py import MPI
 from const import hbar,e,me,kB,mp,e0,e2,EF23prefac
 from math import pi, floor, exp
 from classes import InitSpecies, SimSpecies, SimGrid, simulation
