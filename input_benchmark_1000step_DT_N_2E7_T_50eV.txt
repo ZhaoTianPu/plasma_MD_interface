@@ -7,7 +7,7 @@
 # Description: A input file that specifies all the simulation details, to be  #
 # read by simulation class. If the structure of this input file is changed    #
 # the corresponding file reading function need also to be adjusted.           #
-# Most of the simulation units are in SI by default, with some exceptions,    #
+# Most of the simulation units are in real by default, with some exceptions,  #
 # although the input file can also be used with any other units as well.      #
 #-----------------------------------------------------------------------------#
 # mixture taken from Stanton et al. 2018 PRX 021044
@@ -27,27 +27,27 @@
   2
 # Species 1 info: 
 # mass    | charge    | number density of mixture 1 | of mixture 2
-# mp      | C         | m^-3                        | m^-3
+# mp      | C         | A^-3                        | m^-3
 # float   | float     | float                       | float
-  2.        1.          2.95919E28                   0.
+  2.        1.          2.95919E-2                   0.
 # Species 2 info:               
 # mass    | charge    | number density of mixture 1 | of mixture 2
-# mp      | C         | m^-3                        | m^-3
+# mp      | C         | m^-3                        | A^-3
 # float   | float     | float                       | float
-  3.        1.          0.                           2.95919E28
+  3.        1.          0.                           2.95919E-2
 #-----------------------------------------------------------------------------#
 # Box size
 # Lx, Ly, Lz
-# m
+# A
 # floats
-  1145.2E-9 17.178E-9 17.178E-9 
+  1145.2E1 17.178E1 17.178E1
 # NGrid
 # integer
   2
 # aWidth, Fermi-Dirac distribution width
-# m
+# A
 # float  
-  100E-9
+  100E1
 #-----------------------------------------------------------------------------#
 # Temperature
 # T
@@ -55,19 +55,19 @@
 # float
   50
 #-----------------------------------------------------------------------------#
-# Simulation time (all measured in s):
+# Simulation time (all measured in fs):
 # tStep: timestep
 # float
-  0.01E-15
+  0.01
 # tEqm: equilibrium stage time 
 # float
-  10E-15
+  10
 # tProd: production stage time 
 # float
   0.
 # tDump: dump interval time
 # float
-  10E-15
+  10
 #-----------------------------------------------------------------------------# 
 # potential parameters: 
 # Force field type (eFF/Debye)
@@ -76,11 +76,11 @@ eFF
 #-----------------------------------------------------------------------------#
 # For Debye:
 # tkappaUpdate: kappa update interval time 
-# in s
+# in fs
 # float
-  5E-15
+  5
 # cutoffGlobal:
-# measured in 1/kappa (dimension m), the current algorithm is as follows:
+# measured in 1/kappa (dimension A), the current algorithm is as follows:
 # calculate cutoffGlobal/kappa for all grids, then obtain the max, which is 
 # candidate global cutoff, and compare with Ly/2 and Lz/2. If the global 
 # cutoff is larger than these values, then report error and terminate simulation
@@ -91,7 +91,7 @@ eFF
 #-----------------------------------------------------------------------------#
 # For eFF:
 # cutoffGlobal:
-# in m
+# in A
 # float
-  8.417E-9
+  8.417E1
 #-----------------------------------------------------------------------------#

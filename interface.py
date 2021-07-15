@@ -6,7 +6,7 @@
 #-------------------------------------------------------------------
 # 
 # Description: 
-#
+# in real units
 # Glossaries:
 # 
 # Module dependencies:
@@ -59,8 +59,8 @@ def interface(sim):
 
   L.log(sim.EqmLogName) 
 
-  # SI units
-  L.units("si")
+  # real units
+  L.units("real")
   # dimensions and BCs - periodic for y and z, but fixed for x
   L.dimension(3)
   L.boundary("f p p")
