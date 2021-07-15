@@ -135,7 +135,7 @@ def interface(sim):
   # Integrator set to be verlet
   L.run_style("verlet")
   # Nose-Hoover thermostat, the temperature damping parameter is suggested by the official document
-  L.fix("Nose_Hoover all nvt temp", sim.T, sim.T, 100.0*self.tStep) 
+  L.fix("Nose_Hoover all nvt temp", sim.T, sim.T, 100.0*sim.tStep) 
 
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
@@ -148,15 +148,15 @@ def interface(sim):
   L.reset_timestep(0)
   L.thermo(1000)
   # Equilibriation time
-  L.run(self.NEqm)
+  L.run(sim.NEqm)
 
   #-------------------------------------------------------------------
   # Production run
-  L.log(self.ProdLogName) 
+  L.log(sim.ProdLogName) 
   # unfix NVT
   L.unfix("Nose_Hoover")
   # fix NVE, energy is conserved, not using NVT because T requires 
   # additional heat bath
   L.fix("NVEfix all nve") 
   L.reset_timestep(0)
-  L.run(self.NProd)
+  L.run(sim.NProd)
