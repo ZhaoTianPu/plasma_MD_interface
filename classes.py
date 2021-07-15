@@ -72,6 +72,7 @@ class SimSpecies(InitSpecies):
   def SetTypeID(self, TypeID):
     if type(TypeID) is not int:
       raise Exception("Error: input must be integer")
+    self.TypeID = TypeID
 
 # SimGrid class:
 # A class designed for calculating properties in simulation grids
@@ -119,7 +120,7 @@ class SimGrid:
     """
     ZAvg = self.numAvg([self.SpeciesList[iSpecies].charge for iSpecies in range(self.NSpecies)])
     mAvg = self.numAvg([self.SpeciesList[iSpecies].mass for iSpecies in range(self.NSpecies)])
-    self.omega_p = 1E-15*sqrt(self.numDenSum*ZAvg*ZAvg*e2/(mAvg*mp*e0))
+    self.omega_p = 1E-15*sqrt(self.numDenSum*1E30*ZAvg*ZAvg*e2/(mAvg*mp*e0))
   def numDenSumCalc(self):
     self.numDenSum = sum([self.SpeciesList[iSpecies].numDen for iSpecies in range(self.NSpecies)])
   def numAvg(self,AList):
