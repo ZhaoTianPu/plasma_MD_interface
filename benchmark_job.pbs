@@ -1,5 +1,5 @@
 #PBS -l walltime=00:30:00
-#PBS -l select=1:ncpus=1:mem=20gb:mpiprocs=16
+#PBS -l select=1:ncpus=1:mem=60gb:mpiprocs=16
 
 # above lines: 
 # walltime = estimated running time, sensible values: 30 mins, 24 h, 72 h
