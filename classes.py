@@ -72,6 +72,7 @@ class SimSpecies(InitSpecies):
   def SetTypeID(self, TypeID):
     if type(TypeID) is not int:
       raise Exception("Error: input must be integer")
+    self.TypeID = TypeID
 
 # SimGrid class:
 # A class designed for calculating properties in simulation grids
