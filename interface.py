@@ -37,6 +37,7 @@ from mpi4py import MPI
 from const import hbar,e,me,kB,mp,e0,e2,EF23prefac
 from math import pi, floor, exp
 from classes import InitSpecies, SimSpecies, SimGrid, simulation
+from time import sleep
 
 def interface(sim):
   """
