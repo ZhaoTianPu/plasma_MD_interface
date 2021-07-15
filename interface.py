@@ -130,12 +130,12 @@ def interface(sim):
     RandV = RNG()
   # broadcast to all the processors
   RandV = MPI.COMM_WORLD.bcast(RandV,root=0)
-  L.velocity("all create", T, RandV)
+  L.velocity("all create", sim.T, RandV)
   
   # Integrator set to be verlet
   L.run_style("verlet")
   # Nose-Hoover thermostat, the temperature damping parameter is suggested by the official document
-  L.fix("Nose_Hoover all nvt temp", T, T, 100.0*dt) 
+  L.fix("Nose_Hoover all nvt temp", sim.T, sim.T, 100.0*self.tStep) 
 
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
