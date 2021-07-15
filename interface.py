@@ -88,8 +88,8 @@ def interface(sim):
   RandCreate = MPI.COMM_WORLD.bcast(RandCreate, root=0)
 
   # create and set atoms, and their masses and charges
-  for iSpecies in range(NSpecies):
-    for iGrid in range(NGrid):
+  for iSpecies in range(sim.NSpecies):
+    for iGrid in range(sim.NGrid):
       L.create_atoms(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "random", sim.SimulationBox[iGrid].SpeciesList[iSpecies].num, RandCreate[iSpecies][iGrid], "Region"+"_"+str(iGrid))
       L.mass(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
       L.set("type", sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "charge", sim.SimulationBox[iGrid].SpeciesList[iSpecies].charge)   
@@ -105,8 +105,8 @@ def interface(sim):
   if sim.forcefield == "Debye":
     L.pair_style("coul/debye/vk",sim.cutoffGlobal)
     # pair coeff for same type particles
-    for iGrid in range(NGrid):
-      for iSpecies in range(NSpecies):
+    for iGrid in range(sim.NGrid):
+      for iSpecies in range(sim.NSpecies):
         L.pair_coeff(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].kappa, sim.T)
   elif sim.forcefield == "eFF":
     L.pair_style("eff/cut", sim.cutoffGlobal)
@@ -115,7 +115,7 @@ def interface(sim):
 
   #-------------------------------------------------------------------
   # Grouping based on species
-  for iSpecies in range(NSpecies):
+  for iSpecies in range(sim.NSpecies):
     L.group("Species"+str(iSpecies+1), "type", str(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID)+":"+str(sim.SimulationBox[-1].SpeciesList[iSpecies].TypeID))
   
   # generate a random number for setting velocity
