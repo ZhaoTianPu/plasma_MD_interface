@@ -217,6 +217,9 @@ class simulation:
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.cutoffGlobal = cutoffGlobalIn
 
+      self.neigh_one = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      self.neigh_page = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+
   # helper functions
   def FDDist(self,x):
     """

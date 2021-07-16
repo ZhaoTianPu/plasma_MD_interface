@@ -95,3 +95,8 @@ eFF
 # float
   8.417E1
 #-----------------------------------------------------------------------------#
+# Neighbor list setups
+# one
+  200000
+# page, at least 10x the one setting
+  2000000
