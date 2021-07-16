@@ -66,7 +66,7 @@ def interface(sim):
   # initiate PyLammps
   L = PyLammps()
 
-  L.log(sim.EqmLogName) 
+  # L.log(sim.EqmLogName) 
 
   # real units
   L.units("real")
