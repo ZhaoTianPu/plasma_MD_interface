@@ -19,6 +19,6 @@ export NUMEXPR_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 
 cd "$PBS_O_WORKDIR"
-mpiexec -n 16 python test.py input_benchmark_1000step_DT_N_2E7_T_50eV.txt
+mpiexec -n 16 python test.py input_benchmark_1000step_DT_N_5E6_T_50eV.txt
 
 conda deactivate 
