@@ -1,5 +1,5 @@
-#PBS -l walltime=00:30:00
-#PBS -l select=1:ncpus=16:mem=96gb:mpiprocs=16
+#PBS -l walltime=02:00:00
+#PBS -l select=1:ncpus=48:mem=30gb:mpiprocs=48
 
 # above lines: 
 # walltime = estimated running time, sensible values: 30 mins, 24 h, 72 h
@@ -19,6 +19,6 @@ export NUMEXPR_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 
 cd "$PBS_O_WORKDIR"
-mpiexec -n 16 python test.py input_benchmark_1000step_DT_N_1E5_T_50eV.txt
+mpiexec python test.py input_benchmark_1000step_DT_N_1E5_T_50eV.txt
 
 conda deactivate 
