@@ -14,7 +14,7 @@
 #-----------------------------------------------------------------------------#
 # File directory: relative to the directory where the code and this input is
 # string, put . for the current folder
-  ./benchmark_1000step_DT_N_1E5_T_50eV_node_1_cpu_24
+  ./benchmark_1000step_DT_N_1E5_T_50eV_node_1_cpu_48
 # EqmLogName
   benchmark_EqmLog
 # ProdLogName
