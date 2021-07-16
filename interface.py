@@ -112,7 +112,7 @@ def interface(sim):
   L.timestep(sim.tStep) 
   
   # check neighbor parameters
-  L.neigh_modify("delay", 0, "every", 1, "one", 8000, "page", 80000)
+  L.neigh_modify("delay", 0, "every", 1, "one", 20000, "page", 200000)
   
   # interaction style
   # for Debye with variable Kappa
