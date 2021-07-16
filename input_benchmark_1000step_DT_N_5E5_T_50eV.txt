@@ -29,25 +29,25 @@
 # mass    | charge    | number density of mixture 1 | of mixture 2
 # mp      | C         | m^-3                        | m^-3
 # float   | float     | float                       | float
-  2.        1.          2.95919E28                   0.
+  2.        1.          2.95868E-02                   0.
 # Species 2 info:               
 # mass    | charge    | number density of mixture 1 | of mixture 2
 # mp      | C         | m^-3                        | m^-3
 # float   | float     | float                       | float
-  3.        1.          0.                           2.95919E28
+  3.        1.          0.                           2.95868E-02
 #-----------------------------------------------------------------------------#
 # Box size
 # Lx, Ly, Lz
 # m
 # floats
-  3.34859E-07 5.02288E-09 5.02288E-09
+  3.34859E+03 5.02375E+01 5.02288E+01
 # NGrid
 # integer
   2
 # aWidth, Fermi-Dirac distribution width
 # m
 # float  
-  100E-9
+  100
 #-----------------------------------------------------------------------------#
 # Temperature
 # T
@@ -55,19 +55,19 @@
 # float
   50
 #-----------------------------------------------------------------------------#
-# Simulation time (all measured in s):
+# Simulation time (all measured in fs):
 # tStep: timestep
 # float
-  0.01E-15
+  0.01
 # tEqm: equilibrium stage time 
 # float
-  10E-15
+  10
 # tProd: production stage time 
 # float
   0.
 # tDump: dump interval time
 # float
-  10E-15
+  10
 #-----------------------------------------------------------------------------# 
 # potential parameters: 
 # Force field type (eFF/Debye)
@@ -76,9 +76,9 @@ eFF
 #-----------------------------------------------------------------------------#
 # For Debye:
 # tkappaUpdate: kappa update interval time 
-# in s
+# in fs
 # float
-  5E-15
+  5
 # cutoffGlobal:
 # measured in 1/kappa (dimension m), the current algorithm is as follows:
 # calculate cutoffGlobal/kappa for all grids, then obtain the max, which is 
@@ -93,5 +93,10 @@ eFF
 # cutoffGlobal:
 # in m
 # float
-  8.417E-9
+  2.46121E+01
 #-----------------------------------------------------------------------------#
+# Neighbor list setups
+# one
+  200000
+# page, at least 10x the one setting
+  2000000
