@@ -146,6 +146,7 @@ def interface(sim):
   # Nose-Hoover thermostat, the temperature damping parameter is suggested by the official document
   L.fix("Nose_Hoover all nvt temp", sim.T, sim.T, 100.0*sim.tStep) 
 
+  L.thermo(10)
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
   # energy and makes the system reach equilibrium faster
@@ -155,7 +156,6 @@ def interface(sim):
   # log for equilibrium run
   
   L.reset_timestep(0)
-  L.thermo(1000)
   # Equilibriation time
   L.run(sim.NEqm)
 
