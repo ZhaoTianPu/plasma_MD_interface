@@ -125,6 +125,8 @@ def interface(sim):
   elif sim.forcefield == "eFF":
     L.pair_style("eff/cut", sim.cutoffGlobal)
     L.pair_coeff("* *")
+    L.compute("effTemp all temp/eff")
+    L.thermo_modify("temp effTemp")
     L.comm_modify("vel yes")
 
 
