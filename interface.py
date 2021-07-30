@@ -143,7 +143,7 @@ def interface(sim):
   # broadcast to all the processors
   RandV = MPI.COMM_WORLD.bcast(RandV,root=0)
   if sim.forcefield == "eFF":
-    L.velocity("all create", sim.T, RandV, "rot yes mom yes dist gaussian")
+    L.velocity("all create", sim.T, RandV, "rot yes dist gaussian")
   elif sim.forcefield == "Debye":
     L.velocity("all create", sim.T, RandV, "dist gaussian")  
   # Integrator set to be verlet
