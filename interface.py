@@ -127,6 +127,7 @@ def interface(sim):
     L.pair_coeff("* *")
     L.comm_modify("vel yes")
 
+
   #-------------------------------------------------------------------
   # Grouping based on species
   for iSpecies in range(sim.NSpecies):
@@ -139,18 +140,23 @@ def interface(sim):
     RandV = RNG()
   # broadcast to all the processors
   RandV = MPI.COMM_WORLD.bcast(RandV,root=0)
-  L.velocity("all create", sim.T, RandV)
-  
+  if sim.forcefield == "eFF":
+    L.velocity("all create", sim.T, RandV, "rot yes mom yes dist gaussian")
+  elif sim.forcefield == "Debye":
+    L.velocity("all create", sim.T, RandV, "dist gaussian")  
   # Integrator set to be verlet
   L.run_style("verlet")
   # Nose-Hoover thermostat, the temperature damping parameter is suggested by the official document
-  L.fix("Nose_Hoover all nvt temp", sim.T, sim.T, 100.0*sim.tStep) 
+  if sim.forcefield == "eFF":
+    L.fix("Nose_Hoover all nvt/eff temp", sim.T, sim.T, 100.0*sim.tStep) 
+  elif sim.forcefield == "Debye":
+    L.fix("Nose_Hoover all nvt temp", sim.T, sim.T, 100.0*sim.tStep) 
 
   L.thermo(10)
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
   # energy and makes the system reach equilibrium faster
-  L.minimize("1.0e-6 1.0e-8 1000 10000")
+  L.minimize("0.0 1.0e-4 1000 10000")
   #-------------------------------------------------------------------
   # Equilibration run
   # log for equilibrium run
@@ -166,6 +172,9 @@ def interface(sim):
   L.unfix("Nose_Hoover")
   # fix NVE, energy is conserved, not using NVT because T requires 
   # additional heat bath
-  L.fix("NVEfix all nve") 
+  if sim.forcefield == "eFF":
+    L.fix("NVEfix all nve/eff") 
+  elif sim.forcefield == "Debye":
+    L.fix("NVEfix all nve") 
   L.reset_timestep(0)
   L.run(sim.NProd)
