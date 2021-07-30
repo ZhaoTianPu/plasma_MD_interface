@@ -156,7 +156,8 @@ def interface(sim):
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
   # energy and makes the system reach equilibrium faster
-  L.minimize("0.0 1.0e-4 1000 10000")
+  if sim.forcefield == "Debye":
+    L.minimize("0.0 1.0e-4 1000 10000")
   #-------------------------------------------------------------------
   # Equilibration run
   # log for equilibrium run
