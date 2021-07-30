@@ -148,6 +148,8 @@ def interface(sim):
   L.run_style("verlet")
   # Nose-Hoover thermostat, the temperature damping parameter is suggested by the official document
   if sim.forcefield == "eFF":
+    L.compute("effTemp all temp/eff")
+    L.thermo_modify("temp effTemp")
     L.fix("Nose_Hoover all nvt/eff temp", sim.T, sim.T, 100.0*sim.tStep) 
   elif sim.forcefield == "Debye":
     L.fix("Nose_Hoover all nvt temp", sim.T, sim.T, 100.0*sim.tStep) 
