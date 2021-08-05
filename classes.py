@@ -175,7 +175,7 @@ class simulation:
         SpeciesList = [SimSpecies(iSpecies) for iSpecies in self.InitMixture[0]]
         for iSpecies in range(self.NSpecies):
           # assign Type ID
-          SpeciesList[iSpecies].SetTypeID(iSpecies*self.NGrid + iGrid+1)
+          SpeciesList[iSpecies].SetTypeID(iSpecies+1)
           # calculate particle numbers
           SpeciesList[iSpecies].SetN(int(self.dV*SpeciesList[iSpecies].numDen))
         # assemble the simulation grid
@@ -211,11 +211,24 @@ class simulation:
         # global cutoff
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.cutoffGlobal = self.cutoffGlobalCalc(cutoffGlobalIn)
+        self.SimulationBox = []
+        for iGrid in range(self.NGrid):
+          for iSpecies in range(self.NSpecies):
+            # reassign Type ID for Debye style since for different grids we require to assign the same species different types
+            self.SimulationBox[iGrid].SpeciesList[iSpecies].SetTypeID(iSpecies*self.NGrid + iGrid+1)
       elif self.forcefield == 'eFF':
-        lineCount = lineUpdate(lineCount)
-        lineCount = lineUpdate(lineCount)
+        for i in range(2):
+          lineCount = lineUpdate(lineCount)
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.cutoffGlobal = cutoffGlobalIn
+      elif self.forcefield == 'Coul':
+        for i in range(3):
+          lineCount = lineUpdate(lineCount)
+        cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+        # cutoffGlobalIn*Largest Wigner-Seitz radius of the ion mixtures within all the simulation grid
+        self.cutoffGlobal = cutoffGlobalIn*(3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))^(1/3)
+        word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
+        self.PPPMNGridx, self.PPPMNGridy, self.PPPMNGridz = int(word[0].strip()), int(word[1].strip()), int(word[2].strip())
 
       self.neigh_one = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.neigh_page = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
