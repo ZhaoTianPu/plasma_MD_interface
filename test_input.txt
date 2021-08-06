@@ -49,11 +49,11 @@
 # float  
   100
 #-----------------------------------------------------------------------------#
-# Temperature
-# T
+# Ion and electron temperatures
+# Ti, Te
 # eV (1 eV ~ 11600 K)
 # float
-  50
+  50 50
 #-----------------------------------------------------------------------------#
 # Simulation time (all measured in fs):
 # tStep: timestep
@@ -104,6 +104,14 @@ eFF
 # PPPM mesh grid number
 # int
   1000 10 10
+# cutoffCore:
+# in (the largest Wigner-Seitz radius of the electron within all the simulation grid)
+# float
+  5.0
+# screenLengthCore:
+# in (the largest Wigner-Seitz radius of the electron within all the simulation grid)
+# float
+  0.00125
 #-----------------------------------------------------------------------------#
 # Neighbor list setups
 # one

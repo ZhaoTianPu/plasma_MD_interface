@@ -34,7 +34,7 @@ from lammps import PyLammps
 import numpy as np
 from random import randint
 from mpi4py import MPI
-from const import hbar,e,me,kB,mp,e0,e2,EF23prefac
+from const import hbar,e,me,kB,mp,e0,e2,EF23prefac,Rkcal,qqr2e
 from math import pi, floor, exp
 from classes import InitSpecies, SimSpecies, SimGrid, simulation
 from time import sleep
@@ -70,13 +70,12 @@ def interface(sim):
 
   # real units
   L.units("real")
-  # dimensions and BCs - periodic for y and z, but fixed for x
   L.dimension(3)
-  L.boundary("f p p")
+  L.boundary("p p p")
 
   if sim.forcefield == "eFF":
     L.atom_style("electron")
-  elif sim.forcefield == "Debye":
+  else:
     L.atom_style("charge")
 
   #-------------------------------------------------------------------
@@ -84,14 +83,19 @@ def interface(sim):
   L.region("box block", -sim.Lx2, sim.Lx2, -sim.Ly2, sim.Ly2, -sim.Lz2, sim.Lz2)
 
   # create simulation box
-  L.create_box(sim.NSpecies*sim.NGrid, "box") 
-  
+  if sim.forcefield == "eFF":
+    L.create_box(sim.NSpecies*sim.NGrid+1, "box") 
+  elif sim.forcefield == "Coul":
+    L.create_box(sim.NSpecies+1, "box")
+  else:
+    L.create_box(sim.NSpecies, "box")
+
   # create regions, make solid walls
   for iGrid in range(sim.NGrid):
     L.region("Region"+"_"+str(iGrid), "block", -sim.Lx2+iGrid*sim.dx, -sim.Lx2+(iGrid+1)*sim.dx, -sim.Ly2, sim.Ly2, -sim.Lz2, sim.Lz2)
-    L.fix("Wall"+"_"+str(iGrid), "all", "wall/reflect", "xlo", -sim.Lx2+iGrid*sim.dx, "xhi", -sim.Lx2+(iGrid+1)*sim.dx, "units", "box")
+    L.fix("Wall"+"_"+str(iGrid), "all", "wall/lj126", "xlo",-sim.Lx2+iGrid*sim.dx, Rkcal*min(sim.Ti,sim.Te), sim.aWSmax, sim.aWSmax "xhi", -sim.Lx2+(iGrid+1)*sim.dx, Rkcal*sim.T, sim.aWSmax, sim.aWSmax, "units", "box", "pbc", "yes")
 
-  # create (NSpecies,NGrid) number of random numbers
+  # create (NSpecies+1,NGrid) number of random numbers
   RandCreate = []
   # only ask the processor w/ rank 0 to generate random numbers
   if MPI.COMM_WORLD.rank == 0:
@@ -102,11 +106,32 @@ def interface(sim):
   RandCreate = MPI.COMM_WORLD.bcast(RandCreate, root=0)
 
   # create and set atoms, and their masses and charges
-  for iSpecies in range(sim.NSpecies):
+  if sim.forcefield == "eFF":
     for iGrid in range(sim.NGrid):
+      for iSpecies in range(sim.NSpecies):
+        L.mass(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
+        L.set("type", sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "charge", sim.SimulationBox[iGrid].SpeciesList[iSpecies].charge)  
+  else sim.forcefield == "Coul":
+    for iSpecies in range(sim.NSpecies):
+      L.mass(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
+      L.set("type", sim.SimulationBox[0].SpeciesList[iSpecies].TypeID, "charge", sim.SimulationBox[iGrid].SpeciesList[iSpecies].charge)  
+  
+
+  for iGrid in range(sim.NGrid):
+    for iSpecies in range(sim.NSpecies):
       L.create_atoms(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "random", sim.SimulationBox[iGrid].SpeciesList[iSpecies].num, RandCreate[iSpecies][iGrid], "Region"+"_"+str(iGrid))
-      L.mass(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
-      L.set("type", sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "charge", sim.SimulationBox[iGrid].SpeciesList[iSpecies].charge)   
+  
+  # create electrons
+  if sim.forcefield == "eFF":
+    L.mass(sim.NSpecies*sim.NGrid+1, sim.emass) 
+    L.set("type", sim.NSpecies*sim.NGrid+1, "charge", -1)  
+    for iGrid in range(sim.NGrid):
+      L.create_atoms(sim.NSpecies*sim.NGrid+1, "random", sim.SimulationBox[iGrid].eNum, RandCreate[NSpecies][iGrid], "Region"+"_"+str(iGrid))
+  elif sim.forcefield == "Coul":
+    L.mass(sim.NSpecies+1, sim.emass) 
+    L.set("type", sim.NSpecies+1, "charge", -1)  
+    for iGrid in range(sim.NGrid):
+      L.create_atoms(sim.NSpecies+1, "random", sim.SimulationBox[iGrid].eNum, RandCreate[NSpecies][iGrid], "Region"+"_"+str(iGrid))
   
   # set the timestep
   L.timestep(sim.tStep) 
@@ -128,38 +153,70 @@ def interface(sim):
     L.compute("effTemp all temp/eff")
     L.thermo_modify("temp effTemp")
     L.comm_modify("vel yes")
+  elif sim.forcefield == "Coul":
+    L.pair_style("hybrid", "coul/long", sim.cutoffGlobal, "yukawa", 1/sim.screenLengthCore, sim.cutoffCore)
+    for iSpecies in range sim.SimulationBox[0].SpeciesList:
+      L.pair_coeff(sim.NSpecies+1, iSpecies.TypeID, "coul/long","yukawa", iSpecies.charge*qqr2e)
+      L.pair_coeff(iSpecies.TypeID, sim.NSpecies+1, "coul/long","yukawa", iSpecies.charge*qqr2e) 
+    L.pair_coeff("1*"+str(sim.NSpecies), "1*"+str(sim.NSpecies), "coul/long")
+    L.pair_coeff(sim.NSpecies+1, sim.NSpecies+1, "coul/long")
+
+    L.kspace_style("pppm", 1.0E-5)
+    # NGrids need to be integer value of 2, 3 or 5
+    L.kspace_modify("mesh", sim.PPPMNGridx, sim.PPPMNGridy, sim.PPPMNGridz) 
+    # Change tabinner to be smaller than default so that the real space
+    # potential calculation can be benefitted by using the table; the 
+    # default inner cutoff for using spline table is too large, larger
+    # than the cutoff between direct/inverse cutoff of coul/long potential
+    L.pair_modify("tabinner", 0.1*sim.aWSmaxi)
+    # neighbor list need to be increased accordingly if the density (Gamma)
+    # is too high, the "page" value need to be at least 10x the "one" value
 
 
   #-------------------------------------------------------------------
   # Grouping based on species
+  ionGroup = ""
   for iSpecies in range(sim.NSpecies):
     L.group("Species"+str(iSpecies+1), "type", str(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID)+":"+str(sim.SimulationBox[-1].SpeciesList[iSpecies].TypeID))
-  
+    ionGroup += "Species"+str(iSpecies+1)+" "
+  L.group("ion", "union", ionGroup)
+  if sim.forcefield == "eFF":
+    L.group("electron", "type", sim.NSpecies*sim.NGrid+1)
+  elif sim.forcefield == "Coul":
+    L.group("electron", "type", sim.NSpecies+1)
+
   # generate a random number for setting velocity
-  RandV = 0
+  RandV = []
   # only let the rank 0 processor to generate
   if MPI.COMM_WORLD.rank == 0:
-    RandV = RNG()
+    RandV = [RNG(), RNG()]
   # broadcast to all the processors
   RandV = MPI.COMM_WORLD.bcast(RandV,root=0)
   if sim.forcefield == "eFF":
-    L.velocity("all create", sim.T, RandV, "rot yes dist gaussian")
+    L.velocity("ion", "create", sim.Ti, RandV[0], "rot yes dist gaussian")
+    L.velocity("electron", "create", sim.Te, RandV[1], "rot yes dist gaussian")
   elif sim.forcefield == "Debye":
-    L.velocity("all create", sim.T, RandV, "dist gaussian")  
+    L.velocity("all create", sim.Ti, RandV[0], "dist gaussian")  
+  elif sim.forcefield == "Coul":
+    L.velocity("ion", "create", sim.Ti, RandV[0], "dist gaussian")  
+    L.velocity("electron", "create", sim.Te, RandV[1], "dist gaussian")  
   # Integrator set to be verlet
   L.run_style("verlet")
   # Nose-Hoover thermostat, the temperature damping parameter is suggested by the official document
   if sim.forcefield == "eFF":
-    L.fix("Nose_Hoover all nvt/eff temp", sim.T, sim.T, 100.0*sim.tStep) 
+    L.fix("Nose_Hoover_i", "ion", "nvt/eff", "temp", sim.Ti, sim.Ti, 100.0*sim.tStep) 
+    L.fix("Nose_Hoover_e", "electron", "nvt/eff", "temp", sim.Te, sim.Te, 100.0*sim.tStep) 
   elif sim.forcefield == "Debye":
-    L.fix("Nose_Hoover all nvt temp", sim.T, sim.T, 100.0*sim.tStep) 
+    L.fix("Nose_Hoover all nvt temp", sim.Ti, sim.Ti, 100.0*sim.tStep) 
+  elif sim.forcefield == "Coul":
+    L.fix("Nose_Hoover_i", "ion", "nvt", "temp", sim.Ti, sim.Ti, 100.0*sim.tStep) 
+    L.fix("Nose_Hoover_e", "electron", "nvt", "temp", sim.Te, sim.Te, 100.0*sim.tStep) 
 
-  L.thermo(10)
+  L.thermo(1000)
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
   # energy and makes the system reach equilibrium faster
-  if sim.forcefield == "Debye":
-    L.minimize("0.0 1.0e-4 1000 10000")
+  L.minimize("1.0E-4 1.0e-4 1000 10000")
   #-------------------------------------------------------------------
   # Equilibration run
   # log for equilibrium run
@@ -172,12 +229,21 @@ def interface(sim):
   # Production run
   L.log(sim.ProdLogName) 
   # unfix NVT
-  L.unfix("Nose_Hoover")
+  if sim.forcefield == "Debye":
+    L.unfix("Nose_Hoover_i")
+  else:
+    L.unfix("Nose_Hoover_i")
+    L.unfix("Nose_Hoover_e")
   # fix NVE, energy is conserved, not using NVT because T requires 
   # additional heat bath
   if sim.forcefield == "eFF":
     L.fix("NVEfix all nve/eff") 
-  elif sim.forcefield == "Debye":
+  else:
     L.fix("NVEfix all nve") 
+  # relax the reflective walls
+  for iGrid in range(sim.NGrid):
+    L.unfix("Wall"+"_"+str(iGrid))
+  
+  # run simulations
   L.reset_timestep(0)
   L.run(sim.NProd)

@@ -77,23 +77,28 @@ class SimSpecies(InitSpecies):
 # SimGrid class:
 # A class designed for calculating properties in simulation grids
 class SimGrid:
-  def __init__(self, SpeciesList,Ly,Lz,T,dx):
+  def __init__(self, SpeciesList,Ly,Lz,Ti,Te,dx):
     self.SpeciesList = SpeciesList
     self.NSpecies    = len(self.SpeciesList) 
     self.eDen        = None
     self.eDenCalc()
     self.Ly, self.Lz = Ly, Lz
-    self.T           = T 
+    self.Ti          = Ti 
+    self.Te          = Te
     self.dx          = dx  
     self.dV          = dx*Ly*Lz 
     self.kappa       = None
     self.kappaCalc()
     self.numDenSum   = None
     self.numDenSumCalc()
+    self.eNum        = None 
+    self.eNumCalc()
     self.omega_p     = None
     self.omega_pCalc()
   def eDenCalc(self):
     self.eDen = sum([species.numDen*species.charge for species in self.SpeciesList])
+  def eNumCalc(self):
+    self.eNum = int(self.eDen*self.dV)
   def numUpdate(self, numArray):
     for iSpecies in range(self.NSpecies):
       self.SpeciesList[iSpecies].SetN(numArray[iSpecies])
@@ -102,8 +107,10 @@ class SimGrid:
       self.SpeciesList[iSpecies].numDenUpdate(self.SpeciesList[iSpecies].num/self.dV)
   def SetL(self, Lyin, Lzin):
     self.Ly, self.Lz = Lyin, Lzin
-  def SetT(self, Tin):
-    self.T = Tin
+  def SetTi(self, Tiin):
+    self.Ti = Tiin
+  def setTe(self, Tein):
+    self.Te = Tein
   def Setdx(self, dxin):
     self.dx = dxin
   def kappaCalc(self):
@@ -112,7 +119,7 @@ class SimGrid:
     """
     EF23 = EF23prefac*self.eDen**(2/3)*1E20
     # kappa_TF = 1/lambda_TF
-    self.kappa = 1E-10*e*sqrt(1E30*self.eDen/(e0*sqrt(kB*kB*self.T*self.T + EF23*EF23)))
+    self.kappa = 1E-10*e*sqrt(1E30*self.eDen/(e0*sqrt(kB*kB*self.Ti*self.Ti + EF23*EF23)))
   def omega_pCalc(self):
     """
     obtain aggregate plasma frequency for a simulation grid, in Shaffer et al. 2017 
@@ -161,7 +168,8 @@ class simulation:
       self.dV = self.dx*self.Ly*self.Lz
       self.SimGridList = list(range(self.NGrid))
       self.aWidth = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
-      self.T = float(lines[lineCount].strip())*eV; lineCount = lineUpdate(lineCount)
+      word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
+      self.Ti, self.Te = float(word[0].strip())*eV, float(word[1].strip())*eV
       
       # assemble simulation grids
       
@@ -179,7 +187,7 @@ class simulation:
           # calculate particle numbers
           SpeciesList[iSpecies].SetN(int(self.dV*SpeciesList[iSpecies].numDen))
         # assemble the simulation grid
-        self.SimulationBox.append(SimGrid(SpeciesList,self.Ly,self.Lz,self.T,self.dx))
+        self.SimulationBox.append(SimGrid(SpeciesList,self.Ly,self.Lz,self.Ti,self.Te,self.dx))
         # update the number density of species
         self.SimulationBox[iGrid].numUpdate([int(self.SimulationBox[iGrid].dV*self.InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + self.SimulationBox[iGrid].dV*self.InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid])) for iSpecies in range(self.NSpecies)])
         self.SimulationBox[iGrid].numDenCalc()
@@ -226,9 +234,14 @@ class simulation:
           lineCount = lineUpdate(lineCount)
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         # cutoffGlobalIn*Largest Wigner-Seitz radius of the ion mixtures within all the simulation grid
-        self.cutoffGlobal = cutoffGlobalIn*(3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))^(1/3)
+        self.aWSmaxi = (3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))^(1/3)
+        self.cutoffGlobal = cutoffGlobalIn*self.aWSmaxi
         word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
         self.PPPMNGridx, self.PPPMNGridy, self.PPPMNGridz = int(word[0].strip()), int(word[1].strip()), int(word[2].strip())
+        cutoffCoreIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+        self.aWSmaxe = (3/(4*pi*min([iGrid.eDen for iGrid in self.SimulationBox])))^(1/3)
+        self.cutoffCore = cutoffCoreIn*self.aWSmaxe
+        self.screenLengthCore = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
 
       self.neigh_one = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.neigh_page = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
