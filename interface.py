@@ -175,15 +175,24 @@ def interface(sim):
 
   #-------------------------------------------------------------------
   # Grouping based on species
+  # electron/ion groups
   ionGroup = ""
   for iSpecies in range(sim.NSpecies):
-    L.group("Species"+str(iSpecies+1), "type", str(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID)+":"+str(sim.SimulationBox[-1].SpeciesList[iSpecies].TypeID))
+    L.group("Species_"+str(iSpecies+1), "type", str(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID)+":"+str(sim.SimulationBox[-1].SpeciesList[iSpecies].TypeID))
     ionGroup += "Species"+str(iSpecies+1)+" "
   L.group("ion", "union", ionGroup)
   if sim.forcefield == "eFF":
     L.group("electron", "type", sim.NSpecies*sim.NGrid+1)
   elif sim.forcefield == "Coul":
     L.group("electron", "type", sim.NSpecies+1)
+  # for Debye: 
+  # elif sim.forcefield == "Debye":
+  #   for iGrid in range(sim.NGrid):
+  #     # set type group for each type
+  #     for iSpecies in sim.SimulationBox[iGrid].SpeciesList:
+  #       L.group("Type_"+str(iSpecies.TypeID), "type", str(iSpecies.TypeID))
+  #     # set groups based on Regions
+  #     L.group("RegionGroup_"+str(iGrid), "region", "Region"+"_"+str(iGrid) )
 
   # generate a random number for setting velocity
   RandV = []
@@ -230,7 +239,7 @@ def interface(sim):
   L.log(sim.ProdLogName) 
   # unfix NVT
   if sim.forcefield == "Debye":
-    L.unfix("Nose_Hoover_i")
+    L.unfix("Nose_Hoover")
   else:
     L.unfix("Nose_Hoover_i")
     L.unfix("Nose_Hoover_e")
@@ -244,6 +253,57 @@ def interface(sim):
   for iGrid in range(sim.NGrid):
     L.unfix("Wall"+"_"+str(iGrid))
   
+  # set and calculate force
+  Fprefac1 = -Rkcal*sim.Te/(2*sim.dx)
+  for iGrid in range(sim.NGrid-1)
+    Fprefac2 = Fprefac1*(sim.SimulationBox[iGrid+1].eDen - sim.SimulationBox[iGrid-1].eDen)/sim.SimulationBox[iGrid+1].eDen
+    for iSpecies in sim.SimulationBox[iGrid].SpeciesList
+      iSpecies.SetForce(iSpecies.charge*Fprefac2)
+
+  Fprefac2 = Fprefac1*(sim.SimulationBox[0].eDen - sim.SimulationBox[NGrid-2].eDen)/sim.SimulationBox[NGrid-1].eDen  
+  for iSpecies in sim.SimulationBox[NGrid-1].SpeciesList
+    iSpecies.SetForce(iSpecies.charge*Fprefac2)
+  
+  for iGrid in range(sim.NGrid):
+    for iSpecies in range(sim.NSpecies):
+      L.fix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "setforce", sim.SimulationBox[iGrid].SpeciesList[iSpecies].force, 0.0, 0.0)
+  
   # run simulations
   L.reset_timestep(0)
-  L.run(sim.NProd)
+  
+  # for each cycle
+  for iCycle in range(self.DumpNum):
+    # run the simulation for NDump steps
+    L.run(sim.NDump)
+    # reassign types for species
+    for iGrid in range(sim.NGrid):
+      # temporary group for atoms in a region
+      L.group("RegionGroup_"+str(iGrid), "region", "Region"+"_"+str(iGrid))
+      # temporary storage of count number of each type
+      num_Type_temp = []
+      for iSpecies in range(sim.NSpecies)
+        # temporary group of a species in a region
+        L.group("TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "intersect", "Species_"+str(iSpecies+1), "RegionGroup_"+str(iGrid))
+        # redefine types for these species
+        L.set("group", "TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "type", str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID))
+        # remove the temporary group for a species in a region
+        L.group("TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "delete")
+        # count numbers for these species
+        L.variable("num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "equal", "count("+"TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID)+")")
+        # add number count of each type into the array
+        num_Type_temp.append(L.variables["num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID)])
+        # delete the variable
+        L.variable("num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "delete")
+      sim.SimulationBox[iGrid].numUpdate(num_Type_temp)
+      # calculate number density
+      sim.SimulationBox[iGrid].numDenCalc()
+      # calculate electron density
+      sim.SimulationBox[iGrid].eDenCalc()
+      # update screening parameters
+
+      # remove the temporary group for atoms in a region
+      L.group("RegionGroup_"+str(iGrid), "delete")
+    # update force applied
+    
+
+  L.run(sim.residualStep)

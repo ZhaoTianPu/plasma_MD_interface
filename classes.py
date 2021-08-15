@@ -37,7 +37,7 @@
 #-------------------------------------------------------------------
 
 from const import hbar,e,me,kB,mp,e0,e2,EF23prefac, eV
-from math import sqrt, pi, exp
+from math import sqrt, pi, exp, floor
 
 # InitSpecies class:
 # A class specifically designed for storing initial configuration of species
@@ -119,7 +119,7 @@ class SimGrid:
     """
     EF23 = EF23prefac*self.eDen**(2/3)*1E20
     # kappa_TF = 1/lambda_TF
-    self.kappa = 1E-10*e*sqrt(1E30*self.eDen/(e0*sqrt(kB*kB*self.Ti*self.Ti + EF23*EF23)))
+    self.kappa = 1E-10*e*sqrt(1E30*self.eDen/(e0*sqrt(kB*kB*self.Te*self.Te + EF23*EF23)))
   def omega_pCalc(self):
     """
     obtain aggregate plasma frequency for a simulation grid, in Shaffer et al. 2017 
@@ -174,7 +174,7 @@ class simulation:
       # assemble simulation grids
       
       # get an array of Fermi-Dirac distribution values
-      FDDistArray = [self.FDDist(self.grid2pos(ix)) for ix in range(self.NGrid)]
+      gDistArray = [self.gDist(self.grid2pos(ix)) for ix in range(self.NGrid)]
 
       # initialise arrays of grids
       self.SimulationBox = []
@@ -189,7 +189,7 @@ class simulation:
         # assemble the simulation grid
         self.SimulationBox.append(SimGrid(SpeciesList,self.Ly,self.Lz,self.Ti,self.Te,self.dx))
         # update the number density of species
-        self.SimulationBox[iGrid].numUpdate([int(self.SimulationBox[iGrid].dV*self.InitMixture[0][iSpecies].numDen*FDDistArray[iGrid] + self.SimulationBox[iGrid].dV*self.InitMixture[1][iSpecies].numDen*(1-FDDistArray[iGrid])) for iSpecies in range(self.NSpecies)])
+        self.SimulationBox[iGrid].numUpdate([int(self.SimulationBox[iGrid].dV*self.InitMixture[0][iSpecies].numDen*gDistArray[iGrid] + self.SimulationBox[iGrid].dV*self.InitMixture[1][iSpecies].numDen*(1-gDistArray[iGrid])) for iSpecies in range(self.NSpecies)])
         self.SimulationBox[iGrid].numDenCalc()
         # calculate kappa, meanwhile update electron density
         self.SimulationBox[iGrid].eDenCalc()
@@ -211,6 +211,8 @@ class simulation:
       self.NProd = int(self.tProd/self.tStep)
       self.tDump = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)  
       self.NDump = int(self.tDump/self.tStep)
+      self.DumpNum = floor(self.NProd/self.NDump)
+      self.residualStep = self.NProd - self.DumpNum*self.NDump
       self.forcefield = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
 
       # potential paramteres:
@@ -257,7 +259,7 @@ class simulation:
     """
     distribution that is designed for making the F-D distribution periodic
     """
-    return self.FDDist(x,self.aWidth) - self.FDDist(x+self.Lx2,self.a) + 1 - self.FDDist(x-self.Lx2,self.a)
+    return self.FDDist(x,self.aWidth) - self.FDDist(x+self.Lx2,self.aWidth) + 1 - self.FDDist(x-self.Lx2,self.aWidth)
   
   def pos2grid(self,x):
     """
