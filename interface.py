@@ -255,13 +255,13 @@ def interface(sim):
   
   # set and calculate force
   Fprefac1 = -Rkcal*sim.Te/(2*sim.dx)
-  for iGrid in range(sim.NGrid-1)
+  for iGrid in range(sim.NGrid-1):
     Fprefac2 = Fprefac1*(sim.SimulationBox[iGrid+1].eDen - sim.SimulationBox[iGrid-1].eDen)/sim.SimulationBox[iGrid+1].eDen
-    for iSpecies in sim.SimulationBox[iGrid].SpeciesList
+    for iSpecies in sim.SimulationBox[iGrid].SpeciesList:
       iSpecies.SetForce(iSpecies.charge*Fprefac2)
 
   Fprefac2 = Fprefac1*(sim.SimulationBox[0].eDen - sim.SimulationBox[NGrid-2].eDen)/sim.SimulationBox[NGrid-1].eDen  
-  for iSpecies in sim.SimulationBox[NGrid-1].SpeciesList
+  for iSpecies in sim.SimulationBox[NGrid-1].SpeciesList:
     iSpecies.SetForce(iSpecies.charge*Fprefac2)
   
   for iGrid in range(sim.NGrid):
@@ -281,7 +281,7 @@ def interface(sim):
       L.group("RegionGroup_"+str(iGrid), "region", "Region"+"_"+str(iGrid))
       # temporary storage of count number of each type
       num_Type_temp = []
-      for iSpecies in range(sim.NSpecies)
+      for iSpecies in range(sim.NSpecies):
         # temporary group of a species in a region
         L.group("TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "intersect", "Species_"+str(iSpecies+1), "RegionGroup_"+str(iGrid))
         # redefine types for these species
@@ -307,13 +307,13 @@ def interface(sim):
       L.group("RegionGroup_"+str(iGrid), "delete")
 
     # update force applied
-    for iGrid in range(sim.NGrid-1)
+    for iGrid in range(sim.NGrid-1):
       Fprefac2 = Fprefac1*(sim.SimulationBox[iGrid+1].eDen - sim.SimulationBox[iGrid-1].eDen)/sim.SimulationBox[iGrid+1].eDen
-      for iSpecies in sim.SimulationBox[iGrid].SpeciesList
+      for iSpecies in sim.SimulationBox[iGrid].SpeciesList:
         iSpecies.SetForce(iSpecies.charge*Fprefac2)
   
     Fprefac2 = Fprefac1*(sim.SimulationBox[0].eDen - sim.SimulationBox[NGrid-2].eDen)/sim.SimulationBox[NGrid-1].eDen  
-    for iSpecies in sim.SimulationBox[NGrid-1].SpeciesList
+    for iSpecies in sim.SimulationBox[NGrid-1].SpeciesList:
       iSpecies.SetForce(iSpecies.charge*Fprefac2)
     
     for iGrid in range(sim.NGrid):
