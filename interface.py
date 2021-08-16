@@ -146,7 +146,7 @@ def interface(sim):
     # pair coeff for same type particles
     for iGrid in range(sim.NGrid):
       for iSpecies in range(sim.NSpecies):
-        L.pair_coeff(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].kappa, sim.T)
+        L.pair_coeff(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].kappa)
   elif sim.forcefield == "eFF":
     L.pair_style("eff/cut", sim.cutoffGlobal)
     L.pair_coeff("* *")
@@ -155,7 +155,7 @@ def interface(sim):
     L.comm_modify("vel yes")
   elif sim.forcefield == "Coul":
     L.pair_style("hybrid", "coul/long", sim.cutoffGlobal, "yukawa", 1/sim.screenLengthCore, sim.cutoffCore)
-    for iSpecies in range sim.SimulationBox[0].SpeciesList:
+    for iSpecies in sim.SimulationBox[0].SpeciesList:
       L.pair_coeff(sim.NSpecies+1, iSpecies.TypeID, "coul/long","yukawa", iSpecies.charge*qqr2e)
       L.pair_coeff(iSpecies.TypeID, sim.NSpecies+1, "coul/long","yukawa", iSpecies.charge*qqr2e) 
     L.pair_coeff("1*"+str(sim.NSpecies), "1*"+str(sim.NSpecies), "coul/long")
@@ -266,7 +266,7 @@ def interface(sim):
   
   for iGrid in range(sim.NGrid):
     for iSpecies in range(sim.NSpecies):
-      L.fix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "setforce", sim.SimulationBox[iGrid].SpeciesList[iSpecies].force, 0.0, 0.0)
+      L.fix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "addforce", sim.SimulationBox[iGrid].SpeciesList[iSpecies].force, 0.0, 0.0)
   
   # run simulations
   L.reset_timestep(0)
@@ -300,10 +300,27 @@ def interface(sim):
       # calculate electron density
       sim.SimulationBox[iGrid].eDenCalc()
       # update screening parameters
-
+      sim.SimulationBox[iGrid].kappaCalc()
+      for iSpecies in range(sim.NSpecies):
+        L.pair_coeff(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].kappa)
       # remove the temporary group for atoms in a region
       L.group("RegionGroup_"+str(iGrid), "delete")
-    # update force applied
-    
 
+    # update force applied
+    for iGrid in range(sim.NGrid-1)
+      Fprefac2 = Fprefac1*(sim.SimulationBox[iGrid+1].eDen - sim.SimulationBox[iGrid-1].eDen)/sim.SimulationBox[iGrid+1].eDen
+      for iSpecies in sim.SimulationBox[iGrid].SpeciesList
+        iSpecies.SetForce(iSpecies.charge*Fprefac2)
+  
+    Fprefac2 = Fprefac1*(sim.SimulationBox[0].eDen - sim.SimulationBox[NGrid-2].eDen)/sim.SimulationBox[NGrid-1].eDen  
+    for iSpecies in sim.SimulationBox[NGrid-1].SpeciesList
+      iSpecies.SetForce(iSpecies.charge*Fprefac2)
+    
+    for iGrid in range(sim.NGrid):
+      for iSpecies in range(sim.NSpecies):
+        # unfix previous forces
+        L.unfix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID))
+        # fix new forces
+        L.fix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "addforce", sim.SimulationBox[iGrid].SpeciesList[iSpecies].force, 0.0, 0.0)
+  
   L.run(sim.residualStep)
