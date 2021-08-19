@@ -136,6 +136,8 @@ def interface(sim):
     L.mass(sim.NSpecies+1, sim.emass) 
     L.set("type", sim.NSpecies+1, "charge", -1)  
     
+  print("particles are set up")
+
   # set the timestep
   L.timestep(sim.tStep) 
   
@@ -175,7 +177,7 @@ def interface(sim):
     # neighbor list need to be increased accordingly if the density (Gamma)
     # is too high, the "page" value need to be at least 10x the "one" value
 
-
+  print("pair style config is finished")
   #-------------------------------------------------------------------
   # Grouping based on species
   # electron/ion groups
@@ -196,6 +198,8 @@ def interface(sim):
   #       L.group("Type_"+str(iSpecies.TypeID), "type", str(iSpecies.TypeID))
   #     # set groups based on Regions
   #     L.group("RegionGroup_"+str(iGrid), "region", "Region"+"_"+str(iGrid) )
+  
+  print("particle grouping is finished")
 
   # generate a random number for setting velocity
   RandV = []
@@ -223,6 +227,8 @@ def interface(sim):
   elif sim.forcefield == "Coul":
     L.fix("Nose_Hoover_i", "ion", "nvt", "temp", sim.Ti, sim.Ti, 100.0*sim.tStep) 
     L.fix("Nose_Hoover_e", "electron", "nvt", "temp", sim.Te, sim.Te, 100.0*sim.tStep) 
+  
+  print("force field config is finished")
 
   L.thermo(1000)
   #-------------------------------------------------------------------
@@ -233,10 +239,14 @@ def interface(sim):
   # Equilibration run
   # log for equilibrium run
   
+  print("run equilibration stage")
+
   L.reset_timestep(0)
   # Equilibriation time
   L.run(sim.NEqm)
 
+  print("equilibration stage is finished")
+  print("run production stage")
   #-------------------------------------------------------------------
   # Production run
   L.log(sim.ProdLogName) 
@@ -327,3 +337,5 @@ def interface(sim):
         L.fix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "addforce", sim.SimulationBox[iGrid].SpeciesList[iSpecies].force, 0.0, 0.0)
   
   L.run(sim.residualStep)
+  
+  print("production stage is finished")
