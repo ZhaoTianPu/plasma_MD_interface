@@ -72,7 +72,7 @@
 # potential parameters: 
 # Force field type (eFF/Debye)
 # string
-eFF
+Debye
 #-----------------------------------------------------------------------------#
 # For Debye:
 # tkappaUpdate: kappa update interval time 
