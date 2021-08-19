@@ -259,7 +259,7 @@ class simulation:
     """
     distribution that is designed for making the F-D distribution periodic
     """
-    return self.FDDist(x,self.aWidth) - self.FDDist(x+self.Lx2,self.aWidth) + 1 - self.FDDist(x-self.Lx2,self.aWidth)
+    return self.FDDist(x) - self.FDDist(x+self.Lx2) + 1 - self.FDDist(x-self.Lx2)
   
   def pos2grid(self,x):
     """
