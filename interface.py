@@ -236,7 +236,7 @@ def interface(sim):
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
   # energy and makes the system reach equilibrium faster
-  L.minimize("1.0E-4 1.0e-4 1000 10000")
+  L.minimize("1.0E-4 1.0e-4 100 100")
   print("minimisation is finished")
   #-------------------------------------------------------------------
   # Equilibration run
