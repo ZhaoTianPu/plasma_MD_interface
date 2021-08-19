@@ -182,7 +182,7 @@ def interface(sim):
   ionGroup = ""
   for iSpecies in range(sim.NSpecies):
     L.group("Species_"+str(iSpecies+1), "type", str(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID)+":"+str(sim.SimulationBox[-1].SpeciesList[iSpecies].TypeID))
-    ionGroup += "Species"+str(iSpecies+1)+" "
+    ionGroup += "Species_"+str(iSpecies+1)+" "
   L.group("ion", "union", ionGroup)
   if sim.forcefield == "eFF":
     L.group("electron", "type", sim.NSpecies*sim.NGrid+1)
