@@ -215,8 +215,8 @@ class simulation:
       self.residualStep = self.NProd - self.DumpNum*self.NDump
       self.forcefield = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
 
-      self.aWSmaxi = (3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))^(1/3)
-      self.aWSmaxe = (3/(4*pi*min([iGrid.eDen for iGrid in self.SimulationBox])))^(1/3)
+      self.aWSmaxi = (3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))**(1/3)
+      self.aWSmaxe = (3/(4*pi*min([iGrid.eDen for iGrid in self.SimulationBox])))**(1/3)
       # potential paramteres:
       if self.forcefield == 'Debye':
         self.tkappaUpdate = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
