@@ -93,7 +93,7 @@ def interface(sim):
   # create regions, make solid walls
   for iGrid in range(sim.NGrid):
     L.region("Region"+"_"+str(iGrid), "block", -sim.Lx2+iGrid*sim.dx, -sim.Lx2+(iGrid+1)*sim.dx, -sim.Ly2, sim.Ly2, -sim.Lz2, sim.Lz2)
-    L.fix("Wall"+"_"+str(iGrid), "all", "wall/lj126", "xlo",-sim.Lx2+iGrid*sim.dx, Rkcal*min(sim.Ti,sim.Te), sim.aWSmax, sim.aWSmax "xhi", -sim.Lx2+(iGrid+1)*sim.dx, Rkcal*sim.T, sim.aWSmax, sim.aWSmax, "units", "box", "pbc", "yes")
+    L.fix("Wall"+"_"+str(iGrid), "all", "wall/lj126", "xlo",-sim.Lx2+iGrid*sim.dx, Rkcal*min(sim.Ti,sim.Te), sim.aWSmax, sim.aWSmax, "xhi", -sim.Lx2+(iGrid+1)*sim.dx, Rkcal*sim.T, sim.aWSmax, sim.aWSmax, "units", "box", "pbc", "yes")
 
   # create (NSpecies+1,NGrid) number of random numbers
   RandCreate = []
