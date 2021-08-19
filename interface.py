@@ -231,10 +231,13 @@ def interface(sim):
   print("force field config is finished")
 
   L.thermo(1000)
+
+  print("run minimisation")
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
   # energy and makes the system reach equilibrium faster
   L.minimize("1.0E-4 1.0e-4 1000 10000")
+  print("minimisation is finished")
   #-------------------------------------------------------------------
   # Equilibration run
   # log for equilibrium run
