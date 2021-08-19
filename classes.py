@@ -225,11 +225,15 @@ class simulation:
           for iSpecies in range(self.NSpecies):
             # reassign Type ID for Debye style since for different grids we require to assign the same species different types
             self.SimulationBox[iGrid].SpeciesList[iSpecies].SetTypeID(iSpecies*self.NGrid + iGrid+1)
+        for i in range(5):
+          lineCount = lineUpdate(lineCount)
       elif self.forcefield == 'eFF':
         for i in range(2):
           lineCount = lineUpdate(lineCount)
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.cutoffGlobal = cutoffGlobalIn
+        for i in range(4):
+          lineCount = lineUpdate(lineCount)
       elif self.forcefield == 'Coul':
         for i in range(3):
           lineCount = lineUpdate(lineCount)
