@@ -106,6 +106,10 @@ def interface(sim):
   RandCreate = MPI.COMM_WORLD.bcast(RandCreate, root=0)
 
   # create and set atoms, and their masses and charges
+  for iGrid in range(sim.NGrid):
+    for iSpecies in range(sim.NSpecies):
+      L.create_atoms(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "random", sim.SimulationBox[iGrid].SpeciesList[iSpecies].num, RandCreate[iSpecies][iGrid], "Region"+"_"+str(iGrid))
+  
   if sim.forcefield == "Debye":
     for iGrid in range(sim.NGrid):
       for iSpecies in range(sim.NSpecies):
@@ -120,22 +124,18 @@ def interface(sim):
       L.mass(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
       L.set("type", sim.SimulationBox[0].SpeciesList[iSpecies].TypeID, "charge", sim.SimulationBox[iGrid].SpeciesList[iSpecies].charge)  
 
-  for iGrid in range(sim.NGrid):
-    for iSpecies in range(sim.NSpecies):
-      L.create_atoms(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, "random", sim.SimulationBox[iGrid].SpeciesList[iSpecies].num, RandCreate[iSpecies][iGrid], "Region"+"_"+str(iGrid))
-  
   # create electrons
   if sim.forcefield == "eFF":
-    L.mass(sim.NSpecies+1, sim.emass) 
-    L.set("type", sim.NSpecies+1, "charge", -1)  
     for iGrid in range(sim.NGrid):
       L.create_atoms(sim.NSpecies+1, "random", sim.SimulationBox[iGrid].eNum, RandCreate[NSpecies][iGrid], "Region"+"_"+str(iGrid))
+    L.mass(sim.NSpecies+1, sim.emass) 
+    L.set("type", sim.NSpecies+1, "charge", -1)  
   elif sim.forcefield == "Coul":
-    L.mass(sim.NSpecies+1, sim.emass) 
-    L.set("type", sim.NSpecies+1, "charge", -1)  
     for iGrid in range(sim.NGrid):
       L.create_atoms(sim.NSpecies+1, "random", sim.SimulationBox[iGrid].eNum, RandCreate[NSpecies][iGrid], "Region"+"_"+str(iGrid))
-  
+    L.mass(sim.NSpecies+1, sim.emass) 
+    L.set("type", sim.NSpecies+1, "charge", -1)  
+    
   # set the timestep
   L.timestep(sim.tStep) 
   
