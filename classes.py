@@ -215,6 +215,8 @@ class simulation:
       self.residualStep = self.NProd - self.DumpNum*self.NDump
       self.forcefield = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
 
+      self.aWSmaxi = (3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))^(1/3)
+      self.aWSmaxe = (3/(4*pi*min([iGrid.eDen for iGrid in self.SimulationBox])))^(1/3)
       # potential paramteres:
       if self.forcefield == 'Debye':
         self.tkappaUpdate = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
@@ -239,12 +241,10 @@ class simulation:
           lineCount = lineUpdate(lineCount)
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         # cutoffGlobalIn*Largest Wigner-Seitz radius of the ion mixtures within all the simulation grid
-        self.aWSmaxi = (3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))^(1/3)
         self.cutoffGlobal = cutoffGlobalIn*self.aWSmaxi
         word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
         self.PPPMNGridx, self.PPPMNGridy, self.PPPMNGridz = int(word[0].strip()), int(word[1].strip()), int(word[2].strip())
         cutoffCoreIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
-        self.aWSmaxe = (3/(4*pi*min([iGrid.eDen for iGrid in self.SimulationBox])))^(1/3)
         self.cutoffCore = cutoffCoreIn*self.aWSmaxe
         self.screenLengthCore = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
 
