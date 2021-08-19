@@ -83,12 +83,12 @@ def interface(sim):
   L.region("box block", -sim.Lx2, sim.Lx2, -sim.Ly2, sim.Ly2, -sim.Lz2, sim.Lz2)
 
   # create simulation box
-  if sim.forcefield == "eFF":
-    L.create_box(sim.NSpecies*sim.NGrid+1, "box") 
+  if sim.forcefield == "Debye":
+    L.create_box(sim.NSpecies*sim.NGrid, "box") 
   elif sim.forcefield == "Coul":
     L.create_box(sim.NSpecies+1, "box")
-  else:
-    L.create_box(sim.NSpecies, "box")
+  elif sim.forcefield == "eFF":
+    L.create_box(sim.NSpecies+1, "box")
 
   # create regions, make solid walls
   for iGrid in range(sim.NGrid):
@@ -106,7 +106,7 @@ def interface(sim):
   RandCreate = MPI.COMM_WORLD.bcast(RandCreate, root=0)
 
   # create and set atoms, and their masses and charges
-  if sim.forcefield == "eFF":
+  if sim.forcefield == "Debye":
     for iGrid in range(sim.NGrid):
       for iSpecies in range(sim.NSpecies):
         L.mass(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
@@ -115,7 +115,10 @@ def interface(sim):
     for iSpecies in range(sim.NSpecies):
       L.mass(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
       L.set("type", sim.SimulationBox[0].SpeciesList[iSpecies].TypeID, "charge", sim.SimulationBox[iGrid].SpeciesList[iSpecies].charge)  
-  
+  elif sim.forcefield == "eFF":
+    for iSpecies in range(sim.NSpecies):
+      L.mass(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].mass) 
+      L.set("type", sim.SimulationBox[0].SpeciesList[iSpecies].TypeID, "charge", sim.SimulationBox[iGrid].SpeciesList[iSpecies].charge)  
 
   for iGrid in range(sim.NGrid):
     for iSpecies in range(sim.NSpecies):
@@ -123,10 +126,10 @@ def interface(sim):
   
   # create electrons
   if sim.forcefield == "eFF":
-    L.mass(sim.NSpecies*sim.NGrid+1, sim.emass) 
-    L.set("type", sim.NSpecies*sim.NGrid+1, "charge", -1)  
+    L.mass(sim.NSpecies+1, sim.emass) 
+    L.set("type", sim.NSpecies+1, "charge", -1)  
     for iGrid in range(sim.NGrid):
-      L.create_atoms(sim.NSpecies*sim.NGrid+1, "random", sim.SimulationBox[iGrid].eNum, RandCreate[NSpecies][iGrid], "Region"+"_"+str(iGrid))
+      L.create_atoms(sim.NSpecies+1, "random", sim.SimulationBox[iGrid].eNum, RandCreate[NSpecies][iGrid], "Region"+"_"+str(iGrid))
   elif sim.forcefield == "Coul":
     L.mass(sim.NSpecies+1, sim.emass) 
     L.set("type", sim.NSpecies+1, "charge", -1)  

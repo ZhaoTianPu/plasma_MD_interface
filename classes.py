@@ -221,7 +221,6 @@ class simulation:
         # global cutoff
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.cutoffGlobal = self.cutoffGlobalCalc(cutoffGlobalIn)
-        self.SimulationBox = []
         for iGrid in range(self.NGrid):
           for iSpecies in range(self.NSpecies):
             # reassign Type ID for Debye style since for different grids we require to assign the same species different types
