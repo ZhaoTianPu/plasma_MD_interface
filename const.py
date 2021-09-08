@@ -13,6 +13,8 @@ eV   = 1.160451812E4
 kB   = 1.380649E-23 
 # ideal gas const (in kCal K-1 mol-1)
 Rkcal= 1.98720425864083E-3 
+# J K-1 mol-1
+RJ = 8.314462618
 # proton mass (in kg)
 mp   = 1.67262192369E-27
 # vacuum permittivity (in F m-1)

@@ -29,12 +29,12 @@
 # mass    | charge    | number density of mixture 1 | of mixture 2
 # mp      | C         | A^-3                        | A^-3
 # float   | float     | float                       | float
-  2.        1.          2.95868E-02                   2.95868E-02
+  2.        1.          2.95868E-02                   4.95868E-02
 # Species 2 info:               
 # mass    | charge    | number density of mixture 1 | of mixture 2
 # mp      | C         | A^-3                        | A^-3
 # float   | float     | float                       | float
-  3.        1.          2.95868E-02                   2.95868E-02
+  3.        1.          4.95868E-02                   2.95868E-02
 #-----------------------------------------------------------------------------#
 # Box size
 # Lx, Ly, Lz
@@ -43,7 +43,7 @@
   1.95826E+03 2.93791E+01 2.93791E+01
 # NGrid
 # integer
-  1
+  10
 # aWidth, Fermi-Dirac distribution width
 # A
 # float  
@@ -58,13 +58,13 @@
 # Simulation time (all measured in fs):
 # tStep: timestep
 # float
-  0.01
+  0.001
 # tEqm: equilibrium stage time 
 # float
-  10
+  0.
 # tProd: production stage time 
 # float
-  0.
+  10.
 # tDump: dump interval time
 # float
   10
@@ -78,7 +78,7 @@ Debye
 # tkappaUpdate: kappa update interval time 
 # in fs
 # float
-  5
+  0.01
 # cutoffGlobal:
 # measured in 1/kappa (dimension A), the current algorithm is as follows:
 # calculate cutoffGlobal/kappa for all grids, then obtain the max, which is 

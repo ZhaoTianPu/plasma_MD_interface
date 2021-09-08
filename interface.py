@@ -34,7 +34,7 @@ from lammps import PyLammps
 import numpy as np
 from random import randint
 from mpi4py import MPI
-from const import hbar,e,me,kB,mp,e0,e2,EF23prefac,Rkcal,qqr2e
+from const import hbar,e,me,kB,mp,e0,e2,EF23prefac,Rkcal,qqr2e,RJ
 from math import pi, floor, exp
 from classes import InitSpecies, SimSpecies, SimGrid, simulation
 from time import sleep
@@ -93,7 +93,7 @@ def interface(sim):
   # create regions, make solid walls
   for iGrid in range(sim.NGrid):
     L.region("Region"+"_"+str(iGrid), "block", -sim.Lx2+iGrid*sim.dx, -sim.Lx2+(iGrid+1)*sim.dx, -sim.Ly2, sim.Ly2, -sim.Lz2, sim.Lz2)
-    L.fix("Wall"+"_"+str(iGrid), "all", "wall/lj126", "xlo",-sim.Lx2+iGrid*sim.dx, Rkcal*min(sim.Ti,sim.Te), sim.aWSmaxi, sim.aWSmaxi, "xhi", -sim.Lx2+(iGrid+1)*sim.dx, Rkcal**min(sim.Ti,sim.Te), sim.aWSmaxi, sim.aWSmaxi, "units", "box", "pbc", "yes")
+    # L.fix("Wall"+"_"+str(iGrid), "all", "wall/lj126", "xlo",-sim.Lx2+iGrid*sim.dx, Rkcal*min(sim.Ti,sim.Te), sim.aWSmaxi, sim.aWSmaxi, "xhi", -sim.Lx2+(iGrid+1)*sim.dx, Rkcal*min(sim.Ti,sim.Te), sim.aWSmaxi, sim.aWSmaxi, "units", "box", "pbc", "yes")
 
   # create (NSpecies+1,NGrid) number of random numbers
   RandCreate = []
@@ -186,6 +186,8 @@ def interface(sim):
     L.group("Species_"+str(iSpecies+1), "type", str(sim.SimulationBox[0].SpeciesList[iSpecies].TypeID)+":"+str(sim.SimulationBox[-1].SpeciesList[iSpecies].TypeID))
     ionGroup += "Species_"+str(iSpecies+1)+" "
   L.group("ion", "union", ionGroup)
+  # for iGrid in range(sim.NGrid):
+  #   L.group("RegionGroup_"+str(iGrid), "region", "Region"+"_"+str(iGrid))
   if sim.forcefield == "eFF":
     L.group("electron", "type", sim.NSpecies*sim.NGrid+1)
   elif sim.forcefield == "Coul":
@@ -195,9 +197,7 @@ def interface(sim):
   #   for iGrid in range(sim.NGrid):
   #     # set type group for each type
   #     for iSpecies in sim.SimulationBox[iGrid].SpeciesList:
-  #       L.group("Type_"+str(iSpecies.TypeID), "type", str(iSpecies.TypeID))
-  #     # set groups based on Regions
-  #     L.group("RegionGroup_"+str(iGrid), "region", "Region"+"_"+str(iGrid) )
+  #       L.group("TypeGroup_"+str(iSpecies.TypeID), "type", str(iSpecies.TypeID))
   
   print("particle grouping is finished")
 
@@ -230,7 +230,7 @@ def interface(sim):
   
   print("force field config is finished")
 
-  L.thermo(1000)
+  L.thermo(10)
 
   print("run minimisation")
   #-------------------------------------------------------------------
@@ -266,31 +266,30 @@ def interface(sim):
   else:
     L.fix("NVEfix all nve") 
   # relax the reflective walls
-  for iGrid in range(sim.NGrid):
-    L.unfix("Wall"+"_"+str(iGrid))
+  # for iGrid in range(sim.NGrid):
+  #   L.unfix("Wall"+"_"+str(iGrid))
   
-  # set and calculate force
-  Fprefac1 = -Rkcal*sim.Te/(2*sim.dx)
+  # set and calculate E field (in V/A)
+  Eprefac = -kB*sim.Te/(2*sim.dx*e)
   for iGrid in range(sim.NGrid-1):
-    Fprefac2 = Fprefac1*(sim.SimulationBox[iGrid+1].eDen - sim.SimulationBox[iGrid-1].eDen)/sim.SimulationBox[iGrid+1].eDen
-    for iSpecies in sim.SimulationBox[iGrid].SpeciesList:
-      iSpecies.SetForce(iSpecies.charge*Fprefac2)
+    Efield = Eprefac*(sim.SimulationBox[iGrid+1].eDen - sim.SimulationBox[iGrid-1].eDen)/sim.SimulationBox[iGrid+1].eDen
+    sim.SimulationBox[iGrid].SetEfield(Efield)
 
-  Fprefac2 = Fprefac1*(sim.SimulationBox[0].eDen - sim.SimulationBox[NGrid-2].eDen)/sim.SimulationBox[NGrid-1].eDen  
-  for iSpecies in sim.SimulationBox[NGrid-1].SpeciesList:
-    iSpecies.SetForce(iSpecies.charge*Fprefac2)
+  Efield = Eprefac*(sim.SimulationBox[0].eDen - sim.SimulationBox[sim.NGrid-2].eDen)/sim.SimulationBox[sim.NGrid-1].eDen  
+  sim.SimulationBox[sim.NGrid-1].SetEfield(Efield)
   
   for iGrid in range(sim.NGrid):
-    for iSpecies in range(sim.NSpecies):
-      L.fix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "addforce", sim.SimulationBox[iGrid].SpeciesList[iSpecies].force, 0.0, 0.0)
+    # for iSpecies in range(sim.NSpecies):
+    L.fix("Efield_Region_"+str(iGrid), "all", "efield", sim.SimulationBox[iGrid].Efield, 0.0, 0.0, "region", "Region_"+str(iGrid))  
+      # L.fix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "addforce", sim.SimulationBox[iGrid].SpeciesList[iSpecies].force, 0.0, 0.0)
   
   # run simulations
   L.reset_timestep(0)
   
   # for each cycle
-  for iCycle in range(self.DumpNum):
-    # run the simulation for NDump steps
-    L.run(sim.NDump)
+  for iCycle in range(sim.kappaUpdateNum):
+    # run the simulation for NkappaUpdate steps
+    L.run(sim.NkappaUpdate)
     # reassign types for species
     for iGrid in range(sim.NGrid):
       # temporary group for atoms in a region
@@ -298,18 +297,21 @@ def interface(sim):
       # temporary storage of count number of each type
       num_Type_temp = []
       for iSpecies in range(sim.NSpecies):
-        # temporary group of a species in a region
         L.group("TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "intersect", "Species_"+str(iSpecies+1), "RegionGroup_"+str(iGrid))
         # redefine types for these species
         L.set("group", "TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "type", str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID))
         # remove the temporary group for a species in a region
-        L.group("TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "delete")
         # count numbers for these species
-        L.variable("num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "equal", "count("+"TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID)+")")
+        L.variable("num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "equal", '"count('+'TypeGroup_'+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID)+')"')
+        # if MPI.COMM_WORLD.rank == 0:
         # add number count of each type into the array
-        num_Type_temp.append(L.variables["num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID)])
+        num_Type_temp.append(int(L.eval('v_num_Type_'+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID))))
+        # num_Type_temp = MPI.COMM_WORLD.bcast(num_Type_temp, root=0)
+        print("species "+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID)+" extraction is done")
         # delete the variable
         L.variable("num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "delete")
+        L.group("TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "delete")
+      # L.eval("v_num_Type_1")
       sim.SimulationBox[iGrid].numUpdate(num_Type_temp)
       # calculate number density
       sim.SimulationBox[iGrid].numDenCalc()
@@ -321,24 +323,21 @@ def interface(sim):
         L.pair_coeff(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].kappa)
       # remove the temporary group for atoms in a region
       L.group("RegionGroup_"+str(iGrid), "delete")
+    print("loop "+str(iCycle)+" is finished")
 
-    # update force applied
+    # update Efield applied
     for iGrid in range(sim.NGrid-1):
-      Fprefac2 = Fprefac1*(sim.SimulationBox[iGrid+1].eDen - sim.SimulationBox[iGrid-1].eDen)/sim.SimulationBox[iGrid+1].eDen
-      for iSpecies in sim.SimulationBox[iGrid].SpeciesList:
-        iSpecies.SetForce(iSpecies.charge*Fprefac2)
+      Efield = Eprefac*(sim.SimulationBox[iGrid+1].eDen - sim.SimulationBox[iGrid-1].eDen)/sim.SimulationBox[iGrid+1].eDen
+      sim.SimulationBox[iGrid].SetEfield(Efield)
   
-    Fprefac2 = Fprefac1*(sim.SimulationBox[0].eDen - sim.SimulationBox[NGrid-2].eDen)/sim.SimulationBox[NGrid-1].eDen  
-    for iSpecies in sim.SimulationBox[NGrid-1].SpeciesList:
-      iSpecies.SetForce(iSpecies.charge*Fprefac2)
-    
+    Efield = Eprefac*(sim.SimulationBox[0].eDen - sim.SimulationBox[sim.NGrid-2].eDen)/sim.SimulationBox[sim.NGrid-1].eDen  
+    sim.SimulationBox[sim.NGrid-1].SetEfield(Efield)
+
     for iGrid in range(sim.NGrid):
-      for iSpecies in range(sim.NSpecies):
-        # unfix previous forces
-        L.unfix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID))
-        # fix new forces
-        L.fix("Force_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "addforce", sim.SimulationBox[iGrid].SpeciesList[iSpecies].force, 0.0, 0.0)
-  
+      # for iSpecies in range(sim.NSpecies):
+      L.unfix("Efield_Region_"+str(iGrid))  
+      L.fix("Efield_Region_"+str(iGrid), "all", "efield", sim.SimulationBox[iGrid].Efield, 0.0, 0.0, "region", "Region_"+str(iGrid))  
+    
   L.run(sim.residualStep)
   
   print("production stage is finished")

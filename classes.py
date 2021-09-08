@@ -95,6 +95,7 @@ class SimGrid:
     self.eNumCalc()
     self.omega_p     = None
     self.omega_pCalc()
+    self.Efield      = None
   def eDenCalc(self):
     self.eDen = sum([species.numDen*species.charge for species in self.SpeciesList])
   def eNumCalc(self):
@@ -113,6 +114,8 @@ class SimGrid:
     self.Te = Tein
   def Setdx(self, dxin):
     self.dx = dxin
+  def SetEfield(self, Ein):
+    self.Efield = Ein
   def kappaCalc(self):
     """
     function for obtaining the TF screening length in 1/A
@@ -211,8 +214,6 @@ class simulation:
       self.NProd = int(self.tProd/self.tStep)
       self.tDump = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)  
       self.NDump = int(self.tDump/self.tStep)
-      self.DumpNum = floor(self.NProd/self.NDump)
-      self.residualStep = self.NProd - self.DumpNum*self.NDump
       self.forcefield = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
 
       self.aWSmaxi = (3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))**(1/3)
@@ -220,6 +221,9 @@ class simulation:
       # potential paramteres:
       if self.forcefield == 'Debye':
         self.tkappaUpdate = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+        self.NkappaUpdate = int(self.tkappaUpdate/self.tStep)
+        self.kappaUpdateNum = floor(self.NProd/self.NkappaUpdate)
+        self.residualStep = self.NProd - self.kappaUpdateNum*self.NkappaUpdate
         # global cutoff
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.cutoffGlobal = self.cutoffGlobalCalc(cutoffGlobalIn)
