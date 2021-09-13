@@ -8,7 +8,9 @@
 # Description: 
 # This module contains the simulation class that reads input file
 # that contains the essential simulation parameters for plasma 
-# interface.
+# interface. Notice that all the quantities are calculated in real
+# units so that these can be fed into LAMMPS for simulations with
+# real unit.
 # 
 # Module prerequisites:
 # The versions below are the ones that I use when developing the 
@@ -42,15 +44,28 @@ from math import sqrt, pi, exp, floor
 # InitSpecies class:
 # A class specifically designed for storing initial configuration of species
 # InitSpecies class contains:
-# mass: mass
+# mass: mass in mp
 # charge: charge number
-# numDen: particle number density
+# numDen: particle number density in A^-3
 class InitSpecies:
   def __init__(self, mass, charge, numDen):
     self.mass     = mass
     self.charge   = charge
     self.numDen   = numDen
 
+# SimSpecies class:
+# A class for each individual type of particle in each grid (notice that the 
+# same species in two different grids are two different types of particles 
+# when using Debye screening)
+# requires to feed in InitSpecies class object
+# other than attributes in InitSpecies, it has:
+# attributes:
+# num: total number of particles in this type
+# TypeID: the type ID used in the MD simulation
+# force: additional force fo the type
+# methods:
+# SetForce, numDenUpdate, SetN, SetTypeID requires one argument which is the
+# updated value of Force, numDen, N or TypeID
 class SimSpecies(InitSpecies):
   def __init__(self, InputInitSpecies):
     if not(isinstance(InputInitSpecies,InitSpecies)):
@@ -76,6 +91,22 @@ class SimSpecies(InitSpecies):
 
 # SimGrid class:
 # A class designed for calculating properties in simulation grids
+# requires to feed in: 
+# SpeciesList: a list of SimSpecies object
+# Ly, Lz: length of the simulation box in y and z directions in A
+# Ti, Te: ion and electron temperatures in K
+# dx: grid size in x direction
+# the class contains:
+# attributes: 
+# eDen: electron density in A^-3
+# Ly, Lz, Ti, Te, dx: same as those in the input arguments
+# dV: volume of the grid in A^3
+# kappa: inverse screening length in A^-1
+# numDenSum: the sum of number densities of all species in A^-3
+# eNum: total electron number in the grid 
+# omega_p: aggregate plasma frequency in  fs^-1
+# Efield: electric field in the grid in V/A
+# aWSi, aWSe: Wigner-Seitz radii of ions and electrons in A
 class SimGrid:
   def __init__(self, SpeciesList,Ly,Lz,Ti,Te,dx):
     self.SpeciesList = SpeciesList
@@ -96,14 +127,40 @@ class SimGrid:
     self.omega_p     = None
     self.omega_pCalc()
     self.Efield      = None
+    self.aWSi        = None 
+    self.aWSe        = None 
+    self.aWSiCalc()
+    self.aWSeCalc()
+  def aWSiCalc(self):
+    """
+    calculate Wigner-Seitz radius of ions
+    """
+    self.aWSi = (3/(4*pi*self.numDenSum))**(1/3)
+  def aWSeCalc(self):
+    """
+    calculate Wigner-Seitz radius of electrons
+    """
+    self.aWSe = (3/(4*pi*self.eDen))**(1/3)
   def eDenCalc(self):
+    """
+    calculate electron density according to number densities of ions and their charge numbers
+    """
     self.eDen = sum([species.numDen*species.charge for species in self.SpeciesList])
   def eNumCalc(self):
+    """
+    calculate electron number
+    """
     self.eNum = int(self.eDen*self.dV)
   def numUpdate(self, numArray):
+    """
+    update unumber counts of all species with an array of numbers
+    """
     for iSpecies in range(self.NSpecies):
       self.SpeciesList[iSpecies].SetN(numArray[iSpecies])
   def numDenCalc(self):
+    """
+    calculate number density
+    """
     for iSpecies in range(self.NSpecies):
       self.SpeciesList[iSpecies].numDenUpdate(self.SpeciesList[iSpecies].num/self.dV)
   def SetL(self, Lyin, Lzin):
@@ -126,36 +183,54 @@ class SimGrid:
   def omega_pCalc(self):
     """
     obtain aggregate plasma frequency for a simulation grid, in Shaffer et al. 2017 
-    omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0), <> denotes number averages in 1/fs
+    omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0), <> denotes number averages, the frequency is in 1/fs
+    requires to update numDen and numDenSum
     """
     ZAvg = self.numAvg([self.SpeciesList[iSpecies].charge for iSpecies in range(self.NSpecies)])
     mAvg = self.numAvg([self.SpeciesList[iSpecies].mass for iSpecies in range(self.NSpecies)])
     self.omega_p = 1E-15*sqrt(self.numDenSum*1E30*ZAvg*ZAvg*e2/(mAvg*mp*e0))
   def numDenSumCalc(self):
+    """
+    calculate the sum of number densities of ions
+    requires updating numDen first to get an updated numDenSum
+    """
     self.numDenSum = sum([self.SpeciesList[iSpecies].numDen for iSpecies in range(self.NSpecies)])
   def numAvg(self,AList):
     """
     determine the number average of A, given as a list with length NSpecies
+    requires to update numDen and then numDenSum to make numAvg() is averaging with the up-to-date number densities
     """
     return sum([AList[iSpecies]*self.SpeciesList[iSpecies].numDen/self.numDenSum for iSpecies in range(self.NSpecies)])
 
+# class of the entire simulation, comprises of (1) reading the input script file
+# and (2) initialise parameters that are necessary to be used in LAMMPS. 
 class simulation:
+  # open the file
   def __init__(self, InputFile):
     with open(InputFile, "r") as f:
+      # remove "\n", empty lines and comment lines
       lines = f.read().split("\n")
       lines = [jline for jline in lines if jline != '']
       lines = [jline for jline in lines if jline[0] != '#']
+      # line count tool: whenever a line is read, make lineCount += 1, so the 
+      # next line can be read
       lineCount = 0
       lineUpdate = lambda x: x+1
       
-      # output file directory
+      # output file directories
+      # directory of the input script
       self.dir = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
+      # equlibrium log file name
       self.EqmLogName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
+      # production log file name
       self.ProdLogName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
+      # stem of the dump file
       self.DumpStemName = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
       
-      # species info
+      # get species info
+      # NSpecies for number of species
       self.NSpecies = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+      # build a (2,NSpecies) array to have the information of two mixtures
       self.InitMixture = [[],[]]
       for iSpecies in range(self.NSpecies):
         word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
@@ -170,8 +245,10 @@ class simulation:
       self.dx = self.Lx/self.NGrid
       self.dV = self.dx*self.Ly*self.Lz
       self.SimGridList = list(range(self.NGrid))
+      # the distribution width scale
       self.aWidth = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
+      # temperature input in the input file is in eV, but the LAMMPS input requires K
       self.Ti, self.Te = float(word[0].strip())*eV, float(word[1].strip())*eV
       
       # assemble simulation grids
@@ -191,8 +268,9 @@ class simulation:
           SpeciesList[iSpecies].SetN(int(self.dV*SpeciesList[iSpecies].numDen))
         # assemble the simulation grid
         self.SimulationBox.append(SimGrid(SpeciesList,self.Ly,self.Lz,self.Ti,self.Te,self.dx))
-        # update the number density of species
+        # update the number density of species; calculated from mixing the preset mixtures with the prescribed distribution function
         self.SimulationBox[iGrid].numUpdate([int(self.SimulationBox[iGrid].dV*self.InitMixture[0][iSpecies].numDen*gDistArray[iGrid] + self.SimulationBox[iGrid].dV*self.InitMixture[1][iSpecies].numDen*(1-gDistArray[iGrid])) for iSpecies in range(self.NSpecies)])
+        # calculate number density
         self.SimulationBox[iGrid].numDenCalc()
         # calculate kappa, meanwhile update electron density
         self.SimulationBox[iGrid].eDenCalc()
@@ -203,55 +281,77 @@ class simulation:
       # time scale: calculate omega_p for all grids, the aggregate plasma frequency, follows the expression in Shaffer et al. 2017 
       # then take the maximum value 
       # omega_p = sqrt(n*<Z>^2*e^2/<m>*epsilon_0)
-      self.omega_p = max([iGrid.omega_p for iGrid in self.SimulationBox])
-      self.tp = 1./self.omega_p 
+      self.omega_pmax = max([iGrid.omega_p for iGrid in self.SimulationBox])
+      # plasma time 
+      self.tp = 1./self.omega_pmax 
+      # timestep number measured in fs
       self.tStep = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       # check the relations between plasma time and time step
       self.tStepCheck()
+      # time and step number for equilibrium stage
       self.tEqm = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount) 
       self.NEqm = int(self.tEqm/self.tStep)
+      # time and step number for production stage
       self.tProd = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.NProd = int(self.tProd/self.tStep)
+      # time and step number for taking dumps
       self.tDump = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)  
       self.NDump = int(self.tDump/self.tStep)
+      # forcefield type
       self.forcefield = lines[lineCount].strip(); lineCount = lineUpdate(lineCount)
 
+      # finding maximum aWS for ions and electrons
       self.aWSmaxi = (3/(4*pi*min([iGrid.numDenSum for iGrid in self.SimulationBox])))**(1/3)
       self.aWSmaxe = (3/(4*pi*min([iGrid.eDen for iGrid in self.SimulationBox])))**(1/3)
-      # potential paramteres:
+      # potential paramteres for Debye forcefield:
       if self.forcefield == 'Debye':
+        # time and step numbers for updating kappa once
         self.tkappaUpdate = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.NkappaUpdate = int(self.tkappaUpdate/self.tStep)
+        # number of cycles of updating kappa
         self.kappaUpdateNum = floor(self.NProd/self.NkappaUpdate)
+        # residual steps after the last kappa update
         self.residualStep = self.NProd - self.kappaUpdateNum*self.NkappaUpdate
-        # global cutoff
+        # global cutoff measured in 1/kappa
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
+        # calculate the global cutoff with the function
         self.cutoffGlobal = self.cutoffGlobalCalc(cutoffGlobalIn)
         for iGrid in range(self.NGrid):
           for iSpecies in range(self.NSpecies):
             # reassign Type ID for Debye style since for different grids we require to assign the same species different types
             self.SimulationBox[iGrid].SpeciesList[iSpecies].SetTypeID(iSpecies*self.NGrid + iGrid+1)
+        # skip the next few lines about parameters of other force fields
         for i in range(5):
           lineCount = lineUpdate(lineCount)
+      # potential paramteres for eFF forcefield:
       elif self.forcefield == 'eFF':
+        # skip the parameters for the previous force fields
         for i in range(2):
           lineCount = lineUpdate(lineCount)
+        # global cutoff in A
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.cutoffGlobal = cutoffGlobalIn
+        # skip the rest parameters for other force fields
         for i in range(4):
           lineCount = lineUpdate(lineCount)
       elif self.forcefield == 'Coul':
+        # skip the parameters for the previous force fields
         for i in range(3):
           lineCount = lineUpdate(lineCount)
+        # global cutoff measured in aWSmaxi
         cutoffGlobalIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         # cutoffGlobalIn*Largest Wigner-Seitz radius of the ion mixtures within all the simulation grid
         self.cutoffGlobal = cutoffGlobalIn*self.aWSmaxi
+        # PPPM grid numbers
         word = lines[lineCount].split(); lineCount = lineUpdate(lineCount)
         self.PPPMNGridx, self.PPPMNGridy, self.PPPMNGridz = int(word[0].strip()), int(word[1].strip()), int(word[2].strip())
+        # the cutoff for the repulsive core, measured in aWSmaxi
         cutoffCoreIn = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
         self.cutoffCore = cutoffCoreIn*self.aWSmaxe
+        # length scale of the repulsive core
         self.screenLengthCore = float(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
-
+      
+      # neighbor list parameters
       self.neigh_one = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
       self.neigh_page = int(lines[lineCount].strip()); lineCount = lineUpdate(lineCount)
 

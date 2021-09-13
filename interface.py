@@ -230,13 +230,13 @@ def interface(sim):
   
   print("force field config is finished")
 
-  L.thermo(10)
+  L.thermo(100)
 
   print("run minimisation")
   #-------------------------------------------------------------------
   # Minimizing potential energy to prevent extremely high potential 
   # energy and makes the system reach equilibrium faster
-  # L.minimize("1.0E-4 1.0e-4 100 100")
+  L.minimize("1.0E-4 1.0e-4 100 100")
   print("minimisation is finished")
   #-------------------------------------------------------------------
   # Equilibration run
@@ -303,11 +303,8 @@ def interface(sim):
         # remove the temporary group for a species in a region
         # count numbers for these species
         L.variable("num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "equal", '"count('+'TypeGroup_'+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID)+')"')
-        # if MPI.COMM_WORLD.rank == 0:
         # add number count of each type into the array
         num_Type_temp.append(int(L.eval('v_num_Type_'+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID))))
-        # num_Type_temp = MPI.COMM_WORLD.bcast(num_Type_temp, root=0)
-        print("species "+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID)+" extraction is done")
         # delete the variable
         L.variable("num_Type_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "delete")
         L.group("TypeGroup_"+str(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID), "delete")
@@ -323,7 +320,7 @@ def interface(sim):
         L.pair_coeff(sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].SpeciesList[iSpecies].TypeID, sim.SimulationBox[iGrid].kappa)
       # remove the temporary group for atoms in a region
       L.group("RegionGroup_"+str(iGrid), "delete")
-    print("loop "+str(iCycle)+" is finished")
+    print("cycle "+str(iCycle+1)+" (of "+str(sim.kappaUpdateNum)+") is finished")
 
     # update Efield applied
     for iGrid in range(sim.NGrid-1):
